@@ -1,0 +1,1225 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Captionation</title>
+<style>
+  /* mismo sistema visual que manuelcasten.github.io, en negro */
+  @font-face { font-family:"Archivo Exp"; src:url("fonts/archivo-expanded-800.woff2") format("woff2"); font-weight:800; font-stretch:125%; }
+  :root { --bg:#0b0b0c; --panel:transparent; --line:#26262a; --tx:#ececee; --dim:#8b8b93; --acc:#0a5cff; --ok:#3ecf7a; --err:#ff5a4f; --yel:#ffcf33; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:10px; background:var(--bg); color:var(--tx); font:12px/1.4 "Segoe UI", system-ui, sans-serif; }
+  h1 { font-size:14px; margin:0 0 8px; display:flex; justify-content:space-between; align-items:baseline; }
+  h1 small { color:var(--dim); font-weight:400; font-size:10px; }
+  details { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:6px 8px; margin-bottom:8px; }
+  summary { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); cursor:pointer; padding:2px 0; }
+  details[open] summary { margin-bottom:6px; }
+  .row { display:flex; gap:6px; align-items:center; margin:4px 0; flex-wrap:wrap; }
+  .row label { flex:1 1 140px; color:var(--dim); }
+  input, select, button { font:inherit; color:var(--tx); background:#1b1b1b; border:1px solid var(--line); border-radius:4px; padding:4px 6px; }
+  input[type=number] { width:68px; }
+  input[type=range] { flex:1; padding:0; }
+  input[type=color] { width:40px; height:24px; padding:0 2px; cursor:pointer; }
+  input[type=color].active { outline:2px solid var(--acc); outline-offset:1px; }
+  input.font { flex:1 1 160px; min-width:0; }
+  button { cursor:pointer; background:#3a3a3a; }
+  button:hover { background:#454545; }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:600; }
+  button.primary:hover { background:#4a9ff0; }
+  button.adj { background:#f2c200; border-color:#f2c200; color:#1b1b1b; font-weight:600; }
+  button.adj:hover { background:#ffd633; }
+  #pvWrap { position:sticky; top:-10px; z-index:5; background:var(--bg); padding:4px 0 8px; border-bottom:1px solid var(--line); margin-bottom:8px; }
+  #pv { position:relative; margin:0 auto; overflow:hidden; border-radius:4px; background:linear-gradient(160deg,#6b7780,#36424a 55%,#1f2529); }
+  #pvStage { position:absolute; left:0; top:0; transform-origin:0 0; }
+  .pvSafe { position:absolute; background:rgba(255,70,70,.16); border:1px dashed rgba(255,90,90,.5); }
+  .pvBlk { position:absolute; white-space:nowrap; }
+  .pvSide { position:absolute; white-space:nowrap; line-height:1.15; }
+  #credit { text-align:center; color:var(--dim); font-size:10px; margin:10px 0 2px; letter-spacing:.04em; }
+  .seg { display:flex; } .seg button { border-radius:0; flex:1; } .seg button:first-child { border-radius:4px 0 0 4px; } .seg button:last-child { border-radius:0 4px 4px 0; }
+  .seg button.on { background:var(--acc); border-color:var(--acc); color:#fff; }
+  .path { color:var(--dim); font-size:11px; word-break:break-all; flex:1; }
+  #list { max-height:240px; overflow:auto; border:1px solid var(--line); border-radius:4px; background:#1b1b1b; }
+  .sub { display:flex; gap:8px; padding:5px 6px; border-bottom:1px solid #262626; align-items:baseline; }
+  .tc { color:var(--dim); font-size:10px; font-family:Consolas, monospace; flex:0 0 62px; }
+  .words { display:flex; flex-wrap:wrap; gap:3px; }
+  .w { padding:1px 5px; border-radius:3px; cursor:pointer; user-select:none; }
+  .w:hover { background:#333; }
+  .w.b { font-weight:800; background:#2d8ceb33; color:#fff; }
+  .hint { color:var(--dim); font-size:11px; margin:4px 0 0; }
+  .styles { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; }
+  .styleCard { border:1px solid var(--line); border-radius:6px; padding:8px 4px; cursor:pointer; background:#1b1b1b; text-align:center; line-height:1.15; }
+  .styleCard.on { border-color:var(--acc); box-shadow:0 0 0 1px var(--acc) inset; }
+  .styleCard .t { font-size:10px; color:var(--dim); margin-top:6px; }
+  .s1 { font-size:12px; } .s1 b { font-weight:800; }
+  .s2 { font-size:9px; font-weight:300; } .s2 b { display:block; font-size:14px; font-weight:900; }
+  .s3 { font-size:11px; font-weight:800; } .s3 span { background:#ffd400; color:#111; border-radius:3px; padding:0 3px; }
+  #swatches { display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+  .sw { width:22px; height:22px; border-radius:4px; border:1px solid #0006; cursor:pointer; }
+  .sw:hover { transform:scale(1.1); }
+  .bar { height:6px; background:#1b1b1b; border:1px solid var(--line); border-radius:4px; overflow:hidden; flex:1 1 100%; }
+  .bar > div { height:100%; width:0; background:var(--acc); transition:width .2s; }
+  #wStatus { font-size:11px; color:var(--dim); white-space:pre-wrap; }
+  #status { white-space:pre-wrap; font-size:11px; min-height:16px; margin-top:4px; }
+  #status.ok { color:var(--ok); } #status.err { color:var(--err); }
+
+  /* ---------- estilo de la marca (anula lo de arriba) ---------- */
+  body { font:500 12px/1.45 "Montserrat", "Segoe UI", sans-serif; padding:12px; }
+  .wide { font-family:"Archivo Exp", "Montserrat", sans-serif; font-weight:800; font-stretch:125%; text-transform:uppercase; letter-spacing:.01em; }
+  h1 { flex-direction:column; align-items:flex-start; gap:2px; margin:0 0 10px; padding-bottom:10px; border-bottom:2px solid var(--tx); }
+  h1 .wide { font-size:20px; line-height:1; }
+  h1 small { font-size:10px; font-weight:600; color:var(--dim); }
+  h1 small b { color:var(--acc); font-weight:700; }
+  details { border:0; border-top:1px solid var(--line); border-radius:0; padding:10px 0 8px; margin:0; background:none; }
+  summary { font-family:"Archivo Exp", "Montserrat", sans-serif; font-weight:800; font-stretch:125%; font-size:11px; letter-spacing:.04em; color:var(--tx); list-style:none; display:flex; justify-content:space-between; }
+  summary::-webkit-details-marker { display:none; }
+  summary::after { content:"+"; color:var(--acc); font-size:14px; line-height:1; }
+  details[open] summary::after { content:"−"; }
+  details[open] summary { margin-bottom:8px; }
+  input, select, button { border-radius:2px; background:#141416; border-color:#2c2c31; }
+  input:focus, select:focus { outline:1px solid var(--acc); border-color:var(--acc); }
+  button { background:#1d1d21; font-weight:600; }
+  button:hover { background:#28282d; }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:700; }
+  button.primary:hover { background:#2f76ff; }
+  button.adj { background:var(--yel); border-color:var(--yel); color:#111; font-weight:700; }
+  button.adj:hover { background:#ffdb5c; }
+  .seg button:first-child, .seg button:last-child { border-radius:0; }
+  .styleCard, #list, .bar, #pv { border-radius:2px; }
+  .styleCard { background:#141416; }
+  .w.b { background:#0a5cff40; }
+  input[type=range] { accent-color:var(--acc); }
+  input[type=checkbox] { accent-color:var(--acc); }
+  #pvWrap { border-bottom:0; }
+  #credit { border-top:2px solid var(--tx); padding-top:10px; text-align:left; }
+  #credit b { color:var(--tx); }
+  #updBar { display:none; background:var(--acc); color:#fff; padding:8px 10px; margin:0 0 10px; font-weight:600; align-items:center; gap:8px; }
+  #updBar.on { display:flex; }
+  #updBar span { flex:1; }
+  #updBar button { background:#fff; color:var(--acc); border-color:#fff; font-weight:800; }
+</style>
+</head>
+<body>
+<h1 style="position:relative"><span class="wide">Captionation</span><small>v<span id="verTxt"></span> · by <b>Manuel Aldana</b></small>
+  <div class="seg" id="langSeg" style="position:absolute;right:0;top:0"><button data-l="es">ES</button><button data-l="en">EN</button></div></h1>
+<div id="updBar"><span id="updTxt"></span><button id="updBtn">Descargar</button></div>
+<div id="pvWrap">
+  <div class="row" style="margin:0 0 4px"><span class="path" id="pvInfo">Vista previa · clic en un subtítulo de la lista para verlo</span>
+    <div class="seg" id="pvFmt"><button data-f="v">9:16</button><button data-f="h">16:9</button></div></div>
+  <div id="pv"><div id="pvStage"></div></div>
+</div>
+<style id="pvFonts"></style>
+
+<details open>
+  <summary>0 · Transcribir con IA (Whisper)</summary>
+  <div class="row"><label>Modelo</label>
+    <select id="wModel">
+      <option value="small">Small (264 MB) · rápido</option>
+      <option value="medium" selected>Medium (823 MB) · muy preciso</option>
+      <option value="turbo">Large v3 Turbo (874 MB) · el más preciso</option>
+    </select></div>
+  <div class="row"><label>Idioma</label>
+    <select id="wLang"><option value="es">Español</option><option value="en">Inglés</option><option value="pt">Portugués</option><option value="auto">Detectar</option></select></div>
+  <div class="row"><label>Máx. caracteres por subtítulo</label><input type="number" id="wMax" min="8" step="1" value="26"></div>
+  <div class="row"><label>Palabras de marca (para que las escriba bien)</label><input type="text" id="wPrompt" style="flex:1 1 100%" placeholder="mimarca, producto, Ana"></div>
+  <div class="row"><button class="primary" id="btnWhisper">Transcribir secuencia</button><button id="btnWhisperStop" style="display:none">Cancelar</button></div>
+  <div class="row"><div class="bar"><div id="wBar"></div></div></div>
+  <div id="wLive" style="opacity:.75;font-style:italic;margin:4px 0;min-height:1em"></div>
+  <div id="wStatus">Transcribe el audio de la secuencia activa en esta PC (sin internet). La primera vez descarga el motor y el modelo; después ya no.</div>
+</details>
+
+<details open>
+  <summary>1 · Subtítulos</summary>
+  <div class="row"><button id="btnTxt">Cargar .txt / .srt</button><span class="path" id="txtInfo">—</span></div>
+  <div class="row">
+    <label>Negritas automáticas</label>
+    <select id="rule">
+      <option value="phrase">Frase clave (automático)</option>
+      <option value="keyword">Solo 1 palabra clave</option>
+      <option value="lastN">Últimas N palabras</option>
+      <option value="allButFirst">Todo menos la 1ª palabra</option>
+      <option value="list">Palabras de mi lista</option>
+      <option value="none">Ninguna</option>
+    </select>
+  </div>
+  <div class="row" id="rowN"><label>N</label><input type="number" id="ruleN" min="1" value="2"></div>
+  <div class="row" id="rowList"><label>Lista (separada por comas)</label><input type="text" id="ruleList" style="flex:1" placeholder="agua, filtro, mimarca"></div>
+  <div class="row"><button id="btnRule">Aplicar regla a todo</button><label style="flex:0 0 auto"><input type="checkbox" id="caps"> MAYÚSCULAS</label></div>
+  <div id="list"></div>
+  <p class="hint">Clic en una palabra = bold / regular. Si el archivo trae *asteriscos*, se respetan.</p>
+  <div id="aeEditRow" style="display:none;margin-top:6px">
+    <div class="row"><button id="btnAeRead" class="adj" title="Selecciona en la línea de tiempo la capa CAP del subtítulo">Corregir subtítulo seleccionado</button></div>
+    <div class="row"><input type="text" id="aeEditTxt" style="flex:1" placeholder="Selecciona una capa CAP y pulsa el botón de arriba"><button id="btnAeSave" class="adj">Guardar</button></div>
+    <p class="hint">Lo que va entre *asteriscos* sale resaltado. Enter = guardar. Ctrl+Z en After Effects lo deshace.</p>
+  </div>
+</details>
+
+<details open>
+  <summary>2 · Estilo de edición y marca</summary>
+  <div class="styles">
+    <div class="styleCard" data-card="clasico"><div class="s1">viva <b>la vida loca</b></div><div class="t">Clásico</div></div>
+    <div class="styleCard" data-card="tipo"><div class="s2">Si tiene<b>virus</b>o alguna</div><div class="t">Resalte al centro</div></div>
+    <div class="styleCard" data-card="karaoke"><div class="s3">LA <span>VIDA</span> LOCA</div><div class="t">Karaoke</div></div>
+  </div>
+  <div class="row fontTxt" style="margin-top:8px;display:none"><label>Fuente regular</label><input class="font" id="fontReg" list="fontList" placeholder="SegoeUI"></div>
+  <div class="row fontTxt" style="display:none"><label>Fuente bold</label><input class="font" id="fontBold" list="fontList" placeholder="SegoeUI-Bold"></div>
+  <datalist id="fontList"></datalist>
+  <div class="row" style="margin-top:8px"><label>Fuente regular</label><select class="fontSel" data-for="fontReg" style="flex:1;min-width:0"><option value="">— elegir de la lista —</option></select></div>
+  <div class="row"><label>Fuente bold</label><select class="fontSel" data-for="fontBold" style="flex:1;min-width:0"><option value="">— elegir de la lista —</option></select></div>
+  <div class="row"><button id="btnFonts">Actualizar lista de fuentes</button><span class="path" id="fontInfo"></span></div>
+  <div class="row" style="margin-top:8px"><label>Preset de marca</label><select id="preset" style="flex:1"><option value="">— ninguno —</option></select></div>
+  <div class="row">
+    <input type="text" id="presetName" placeholder="Nombre (ej. MiMarca)" style="flex:1">
+    <button id="btnPresetSave">Guardar</button>
+    <button id="btnPresetDel" title="Borrar el preset elegido">Borrar</button>
+  </div>
+  <div class="row"><button id="btnPresetExport">Exportar marcas…</button><button id="btnPresetImport">Importar marcas…</button></div>
+</details>
+
+<details open>
+  <summary>3 · Texto y animación</summary>
+  <div class="row"><label>Alineación</label>
+    <div class="seg" id="alignSeg"><button data-al="1">Izquierda</button><button data-al="2">Centro</button><button data-al="3">Derecha</button></div></div>
+  <div class="row"><label>Animación de entrada</label>
+    <select id="estilo">
+      <option value="1">Pop (escala)</option>
+      <option value="2">Subir</option>
+      <option value="3">Fade</option>
+      <option value="4">Desenfoque</option>
+      <option value="5">Máquina de escribir</option>
+      <option value="6">Caer desde arriba</option>
+      <option value="7">Zoom (desde grande)</option>
+    </select></div>
+  <div class="row"><label>Retraso entre palabras (frames)</label><input type="number" id="retraso" min="0" step="1" value="2"></div>
+  <div class="row"><label>Duración de la entrada (frames)</label><input type="number" id="vel" min="1" step="1" value="6"></div>
+  <div class="row"><label>Tamaño de letra</label><input type="number" id="tam" min="10" step="1" value="85"></div>
+  <div class="row"><label>Escala del bold (%)</label><input type="number" id="esc" min="50" step="5" value="100"></div>
+  <div class="row"><label>Interletrado</label><input type="number" id="track2" step="5" value="-40"></div>
+  <div class="row"><label>Posición horizontal (%)</label><input type="number" id="posX" min="0" max="100" step="1" value="50"></div>
+  <div class="row"><label>Posición vertical (%)</label><input type="number" id="posY" min="0" max="100" step="1" value="68"></div>
+  <div class="row"><label><input type="checkbox" id="safeZone" checked> Respetar zona segura TikTok/Reels (vertical)</label></div>
+  <div class="row"><label>Caracteres por línea</label><input type="number" id="cpl" min="5" step="1" value="18"></div>
+</details>
+
+<details open>
+  <summary>4 · Resaltar la palabra que se dice</summary>
+  <div class="row"><label>Modo</label>
+    <select id="kar"><option value="0">No</option><option value="1">Caja de color</option><option value="2">Solo cambiar color</option></select></div>
+  <div class="row"><label>Color de la palabra activa</label><input type="color" class="col" id="colAct" value="#111111"></div>
+  <div class="row"><label>Color de la caja</label><input type="color" class="col" id="colCaja" value="#ffd400"></div>
+  <div class="row"><label>Margen de la caja (px)</label><input type="number" id="cajaM" min="0" step="2" value="12"></div>
+  <div class="row"><label>Redondeo de la caja (px)</label><input type="number" id="cajaR" min="0" step="2" value="14"></div>
+  <p class="hint">Por ahora el tiempo de cada palabra se reparte dentro de cada subtítulo. Con la transcripción integrada (próxima versión) será exacto.</p>
+</details>
+
+<details open>
+  <summary>5 · Colores de marca</summary>
+  <div class="row"><label>Regular</label><input type="color" class="col" id="colReg" value="#ffffff">
+                   <label style="flex:0 0 auto">Bold</label><input type="color" class="col" id="colBold" value="#ffffff"></div>
+  <div class="row"><label>Borde (grosor px)</label><input type="number" id="bordeW" min="0" step="1" value="0"><input type="color" class="col" id="colBorde" value="#000000"></div>
+  <div class="row" style="align-items:flex-start"><div id="swatches"></div><button id="btnSwAdd" title="Guarda el color marcado como muestra">+ Muestra</button></div>
+  <p class="hint">Elige un cuadro de color (queda marcado en azul) y haz clic en una muestra. Clic derecho en una muestra = borrarla.</p>
+</details>
+
+<details>
+  <summary>6 · Efectos y fondo</summary>
+  <div class="row"><label>Brillo / glow (intensidad %)</label><input type="range" id="glowIR" min="0" max="300" step="5" value="0"><input type="number" id="glowI" min="0" max="300" step="5" value="0"></div>
+  <div class="row"><label>Brillo / glow (radio)</label><input type="number" id="glowR" min="0" step="5" value="30"></div>
+  <div class="row"><label>Sombra (%)</label><input type="number" id="sombra" min="0" max="200" step="10" value="100"></div>
+  <div class="row"><label>Opacidad del fondo (%)</label><input type="range" id="fOpR" min="0" max="100" step="1" value="0"><input type="number" id="fOp" min="0" max="100" step="1" value="0"></div>
+  <div class="row"><label>Color del fondo</label><input type="color" class="col" id="fColor" value="#000000"></div>
+  <div class="row"><label>Margen del fondo (px)</label><input type="number" id="fMargen" min="0" step="2" value="30"></div>
+  <div class="row"><label>Redondeo del fondo (px)</label><input type="number" id="fRed" min="0" step="2" value="20"></div>
+  <p class="hint">También puedes arrastrar cualquier efecto o preset de Premiere (desenfoque, glow, transiciones…) sobre los clips de subtítulos.</p>
+</details>
+
+<details open>
+  <summary>7 · Secuencia</summary>
+  <div class="row"><button id="btnSeq">Leer secuencia activa</button><span class="path" id="seqName">—</span></div>
+  <div class="row"><label>Plantilla</label><span class="path" id="mogrtInfo">Incluida (automática)</span></div>
+  <div class="row"><button id="btnMogrt">Usar otra .mogrt…</button><button id="btnMogrtReset">Usar la incluida</button></div>
+  <div class="row"><label>Pista de video</label><select id="track"></select></div>
+  <div class="row"><label>Los tiempos empiezan en</label>
+    <select id="startMode"><option value="zero">El inicio de la secuencia</option><option value="playhead">El cabezal de reproducción</option></select></div>
+  <div class="row">
+    <button class="primary" id="btnInsert">Insertar subtítulos</button>
+    <button id="btnRestyle" title="Cambia el estilo de todos los subtítulos de la pista elegida, sin tocar el texto">Re-aplicar estilo a la pista</button>
+  </div>
+  <div id="status"></div>
+</details>
+<div id="credit"><span class="wide">Captionation</span> · by <b>Manuel Aldana</b> · <a href="#" id="siteLink" style="color:var(--acc)">manuelcasten.github.io</a></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // Nombres expuestos en la plantilla (deben coincidir con el script de After Effects)
+  const P = {
+    texto: 'Texto', tiempos: 'Tiempos (no tocar)', fReg: 'Fuente regular', fBold: 'Fuente bold',
+    estilo: 'Estilo entrada (1-7)', dis: 'Diseño (1 Clásico 2 Tipográfico)', esc: 'Escala bold (%)',
+    align: 'Alineación (1 Izq 2 Centro 3 Der)', retraso: 'Retraso entre palabras (frames)', vel: 'Velocidad entrada (frames)',
+    tam: 'Tamaño de letra', posX: 'Posición horizontal (%)', posY: 'Posición vertical (%)', cpl: 'Caracteres por linea', track: 'Interletrado',
+    colReg: 'Color regular', colBold: 'Color bold', bordeW: 'Borde grosor (px)', colBorde: 'Color borde',
+    kar: 'Resaltar palabra (0 No 1 Caja 2 Color)', colAct: 'Color palabra activa', colCaja: 'Color caja resalte',
+    cajaM: 'Caja margen (px)', cajaR: 'Caja redondeo (px)', glowI: 'Brillo intensidad', glowR: 'Brillo radio', sombra: 'Sombra (%)',
+    fOp: 'Fondo opacidad (%)', fColor: 'Color fondo', fMargen: 'Fondo margen (px)', fRed: 'Fondo redondeo (px)'
+  };
+  // id del input -> nombre en la plantilla
+  const NUMS = { estilo: P.estilo, esc: P.esc, retraso: P.retraso, vel: P.vel, tam: P.tam, posX: P.posX, posY: P.posY, cpl: P.cpl,
+                 track2: P.track, bordeW: P.bordeW, kar: P.kar, cajaM: P.cajaM, cajaR: P.cajaR,
+                 glowI: P.glowI, glowR: P.glowR, sombra: P.sombra, fOp: P.fOp, fMargen: P.fMargen, fRed: P.fRed };
+  const COLS = { colReg: P.colReg, colBold: P.colBold, colBorde: P.colBorde, colAct: P.colAct, colCaja: P.colCaja, fColor: P.fColor };
+  const STYLE_IDS = Object.keys(NUMS).concat(Object.keys(COLS), ['fontReg', 'fontBold']);
+
+  // Estilos de edición (cada tarjeta pone estos valores; luego todo se puede cambiar)
+  const CARDS = {
+    clasico: { dis: 1, kar: 0, esc: 100, cpl: 18, fontReg: 'SegoeUI', fontBold: 'SegoeUI-Bold', caps: false },
+    tipo:    { dis: 3, kar: 0, esc: 200, cpl: 26, fontReg: 'SegoeUI', fontBold: 'SegoeUI-Bold', caps: false }, // Captionation
+    karaoke: { dis: 1, kar: 1, esc: 100, cpl: 16, fontReg: 'SegoeUI-Bold', fontBold: 'SegoeUIBlack', caps: true, track2: -20 }
+  };
+
+  const STOP = new Set(('a al algo algun alguna algunas alguno algunos ante antes aqui asi aun bien cada como con contra cual cuales cuando de del desde donde dos el ella ellas ello ellos en entre era eran es esa esas ese eso esos esta estaba estan estar estas este esto estos fue fueron ha habia han hasta hay la las le les lo los mas me mi mis mucho muy nada ni no nos nuestra nuestro nuestros o otra otro para pero poco por porque pues que quien se sea ser si sido sin sobre son su sus tambien te tiene tienen todo todos tu tus un una unas uno unos y ya yo eh bueno entonces justamente realmente digamos osea').split(' '));
+
+  const $ = (id) => document.getElementById(id);
+  let subs = [];
+  let seqInfo = null, pvFmt = 'v', pvIndex = 0;
+  let dis = 1, align = 2, card = 'clasico';
+  let palette = ['#ffffff', '#000000', '#ffd400', '#2d8ceb'];
+  let activeColor = 'colBold';
+  let customMogrt = '';
+  const nodeRequire = window.require || (window.cep_node && window.cep_node.require) || null;
+  const NBuffer = window.Buffer || (window.cep_node && window.cep_node.Buffer);
+  const nproc = window.process || (window.cep_node && window.cep_node.process) || { env: {} };
+
+  // ---------- Premiere ----------
+  // mismo panel en Premiere (PPRO) y After Effects (AEFT)
+  const HOST = (() => { try { return JSON.parse(window.__adobe_cep__.getHostEnvironment()).appName; } catch (e) { return 'PPRO'; } })();
+  const IS_AE = HOST === 'AEFT';
+  let aeLoad = null;
+  function evalJsx(code) {
+    return new Promise((res) => {
+      if (!window.__adobe_cep__) { res('err:Este panel solo funciona dentro de Premiere Pro o After Effects.'); return; }
+      const run = () => window.__adobe_cep__.evalScript(code, res);
+      if (!IS_AE) { run(); return; }
+      if (!aeLoad) aeLoad = new Promise((ok) => {
+        const d = (extPath() + '\\jsx').replace(/\\/g, '/');
+        window.__adobe_cep__.evalScript('$.global.SB_DIR=' + lit(d) + ';$.evalFile(new File(' + lit(d + '/host_ae.jsx') + '));"ok"', ok);
+      });
+      aeLoad.then(run);
+    });
+  }
+  const lit = (v) => JSON.stringify(v).replace(/[\u007f-\uffff]/g, (c) => '\\u' + ('0000' + c.charCodeAt(0).toString(16)).slice(-4));
+  function status(msg, kind) { const s = $('status'); s.textContent = msg; s.className = kind || ''; }
+
+  function extPath() {
+    try { return decodeURI(window.__adobe_cep__.getSystemPath('extension').replace(/^file:\/{2,3}/, '')).replace(/\//g, '\\'); }
+    catch (e) { return ''; }
+  }
+  // ---------- versión y aviso de actualizaciones (lee manuelcasten.github.io/version.json) ----------
+  const SB_VERSION = '4.2.1';
+  const SB_SITE = 'https://manuelcasten.github.io/';
+  $('verTxt').textContent = SB_VERSION;
+  $('siteLink').onclick = (e) => { e.preventDefault(); openUrl(SB_SITE); };
+  function openUrl(u) {
+    try { window.cep.util.openURLInDefaultBrowser(u); return; } catch (e) {}
+    try { nodeRequire('child_process').exec('start "" "' + u + '"'); } catch (e) {}
+  }
+  const verNum = (v) => String(v).split('.').map((n) => parseInt(n, 10) || 0);
+  function newer(a, b) { const x = verNum(a), y = verNum(b); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; }
+  function getJson(url) {
+    return new Promise((res, rej) => {
+      if (nodeRequire) {
+        nodeRequire('https').get(url, { headers: { 'Cache-Control': 'no-cache' } }, (r) => {
+          let d = ''; r.setEncoding('utf8'); r.on('data', (c) => { d += c; });
+          r.on('end', () => { try { res(JSON.parse(d)); } catch (e) { rej(e); } });
+        }).on('error', rej);
+      } else fetch(url, { cache: 'no-store' }).then((r) => r.json()).then(res, rej);
+    });
+  }
+  setTimeout(async () => {
+    try {
+      const j = await getJson(SB_SITE + 'version.json?t=' + Date.now());
+      const c = j && j.captionation;
+      if (!c || !newer(c.version, SB_VERSION)) return;
+      $('updTxt').textContent = 'Nueva versión ' + c.version + ' disponible' + (c.notes ? ': ' + c.notes : '');
+      $('updBtn').onclick = () => openUrl(c.url || SB_SITE + 'captionation.html');
+      $('updBar').classList.add('on');
+    } catch (e) {} // sin internet: no pasa nada
+  }, 1500);
+
+  if (IS_AE) {
+    $('btnWhisper').textContent = 'Transcribir composición';
+    $('btnSeq').textContent = 'Leer composición activa';
+    $('btnRestyle').textContent = 'Aplicar estilo a todos';
+    $('btnRestyle').title = 'Cambia "Captionation Estilo": todos los subtítulos del proyecto se actualizan';
+    ['track', 'mogrtInfo', 'btnMogrt'].forEach((id) => { const r = $(id) && $(id).closest('.row'); if (r) r.style.display = 'none'; });
+    $('wStatus').textContent = 'Transcribe el audio de la composición activa (o solo el área de trabajo, si la acortaste) en esta PC, sin internet.';
+    document.querySelectorAll('summary').forEach((s) => { if (/Secuencia/.test(s.textContent)) s.textContent = '7 · Composición'; });
+    // corregir el texto de un subtítulo ya insertado
+    $('aeEditRow').style.display = '';
+    const aeMsg = (m, k) => { status(m, k); $('aeEditTxt').title = m; };
+    $('btnAeRead').onclick = async () => {
+      const r = await evalJsx('sb_getSelText()');
+      if (r.startsWith('ok:')) { $('aeEditTxt').value = r.slice(3); $('aeEditTxt').focus(); aeMsg('Corrige el texto y pulsa Guardar.', 'ok'); }
+      else { $('aeEditTxt').value = ''; $('aeEditTxt').placeholder = r.replace(/^err:/, ''); aeMsg(r.replace(/^err:/, ''), 'err'); }
+    };
+    $('btnAeSave').onclick = async () => {
+      const r = await evalJsx('sb_setSelText(' + lit($('aeEditTxt').value) + ')');
+      if (r === 'ok') { $('btnAeSave').textContent = '✓ Guardado'; setTimeout(() => { $('btnAeSave').textContent = 'Guardar'; }, 1500); aeMsg('Texto corregido.', 'ok'); }
+      else aeMsg(r.replace(/^err:/, ''), 'err');
+    };
+    $('aeEditTxt').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnAeSave').onclick(); });
+  }
+  function bundledMogrt(info) {
+    return extPath() + '\\templates\\Subtitulos Bold ' + ((info && info.h > info.w) ? 'Vertical' : 'Horizontal') + '.mogrt';
+  }
+  function updateMogrtInfo() {
+    $('mogrtInfo').textContent = customMogrt ? customMogrt.split(/[\\/]/).pop()
+      : 'Incluida (' + (seqInfo ? (seqInfo.h > seqInfo.w ? 'vertical' : 'horizontal') : 'según la secuencia') + ')';
+  }
+
+  // ---------- ajustes ----------
+  const UI_IDS = ['rule', 'ruleN', 'ruleList', 'startMode', 'wModel', 'wLang', 'wMax', 'wPrompt'];
+  function collectStyle() {
+    const s = { dis, align, card, caps: $('caps').checked };
+    STYLE_IDS.forEach((k) => { s[k] = $(k).value; });
+    return s;
+  }
+  function applyStyle(s) {
+    if (!s) return;
+    STYLE_IDS.forEach((k) => { if (s[k] !== undefined) $(k).value = s[k]; });
+    if (s.caps !== undefined) $('caps').checked = !!s.caps;
+    if (s.dis) dis = +s.dis;
+    if (s.align) setAlign(+s.align);
+    if (s.card) setCard(s.card, false);
+    $('fOpR').value = $('fOp').value; $('glowIR').value = $('glowI').value;
+  }
+  function save() {
+    try {
+      const s = { style: collectStyle(), mogrt: customMogrt, palette };
+      UI_IDS.forEach((k) => { s[k] = $(k).value; });
+      localStorage.setItem('sb_settings3', JSON.stringify(s));
+    } catch (e) {}
+  }
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem('sb_settings3') || '{}');
+      UI_IDS.forEach((k) => { if (s[k] !== undefined) $(k).value = s[k]; });
+      if (s.mogrt) customMogrt = s.mogrt;
+      if (Array.isArray(s.palette)) palette = s.palette;
+      if (s.style) applyStyle(s.style); else setCard('clasico', true);
+    } catch (e) { setCard('clasico', true); }
+  }
+
+  // ---------- estilos de edición ----------
+  function setCard(name, setDefaults) {
+    card = name;
+    document.querySelectorAll('.styleCard').forEach((c) => c.classList.toggle('on', c.dataset.card === name));
+    if (!setDefaults) return;
+    const d = CARDS[name];
+    dis = d.dis;
+    Object.keys(d).forEach((k) => { if ($(k) && k !== 'caps') $(k).value = d[k]; });
+    $('caps').checked = d.caps;
+    render(); syncFontSel();
+  }
+  document.querySelectorAll('.styleCard').forEach((c) => { c.onclick = () => { setCard(c.dataset.card, true); save(); }; });
+  function setAlign(v) {
+    align = v;
+    document.querySelectorAll('#alignSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.al === v));
+  }
+  document.querySelectorAll('#alignSeg button').forEach((b) => { b.onclick = () => { setAlign(+b.dataset.al); save(); }; });
+
+  // ---------- fuentes instaladas (lee el nombre PostScript de cada .ttf/.otf) ----------
+  function readFontNames(fs, file) {
+    let fd;
+    try {
+      fd = fs.openSync(file, 'r');
+      const rd = (pos, len) => { const b = NBuffer.alloc(len); fs.readSync(fd, b, 0, len, pos); return b; };
+      const head = rd(0, 12);
+      const num = head.readUInt16BE(4);
+      const dir = rd(12, num * 16);
+      let off = -1, len = 0;
+      for (let i = 0; i < num; i++) {
+        if (dir.toString('latin1', i * 16, i * 16 + 4) === 'name') { off = dir.readUInt32BE(i * 16 + 8); len = dir.readUInt32BE(i * 16 + 12); }
+      }
+      if (off < 0 || len > 2000000) return null;
+      const t = rd(off, len);
+      const count = t.readUInt16BE(2), strOff = t.readUInt16BE(4);
+      const names = {};
+      for (let i = 0; i < count; i++) {
+        const r = 6 + i * 12;
+        const plat = t.readUInt16BE(r), lang = t.readUInt16BE(r + 4), id = t.readUInt16BE(r + 6), l = t.readUInt16BE(r + 8), o = t.readUInt16BE(r + 10);
+        if (![1, 2, 4, 6, 16, 17].includes(id)) continue;
+        const raw = t.slice(strOff + o, strOff + o + l);
+        let s;
+        if (plat === 3 || plat === 0) { s = ''; for (let k = 0; k + 1 < raw.length; k += 2) s += String.fromCharCode(raw.readUInt16BE(k)); }
+        else s = raw.toString('latin1');
+        const pri = (plat === 3 && lang === 0x409) ? 2 : (plat === 3 ? 1 : 0);
+        if (!names[id] || names[id].pri < pri) names[id] = { s, pri };
+      }
+      if (!names[6]) return null;
+      const fam = (names[16] || names[1] || { s: '' }).s, sty = (names[17] || names[2] || { s: '' }).s;
+      return { ps: names[6].s, label: (fam + ' ' + sty).trim() };
+    } catch (e) { return null; }
+    finally { try { if (fd !== undefined) fs.closeSync(fd); } catch (e) {} }
+  }
+  function fillFontList(list) {
+    const dl = $('fontList'); dl.innerHTML = '';
+    list.forEach((f) => { const o = document.createElement('option'); o.value = f.ps; o.label = f.label; dl.appendChild(o); });
+    $('fontInfo').textContent = list.length + ' fuentes';
+    window._sbFonts = list;
+    syncFontSel();
+  }
+  // deslizador junto a cada número
+  const RANGES = { retraso: [0, 30], vel: [1, 60], tam: [10, 300], esc: [50, 600], track2: [-200, 400], posX: [0, 100], posY: [0, 100],
+                   cpl: [5, 60], cajaM: [0, 100], cajaR: [0, 100], bordeW: [0, 50], glowR: [0, 200], sombra: [0, 200], fMargen: [0, 200], fRed: [0, 200] };
+  Object.keys(RANGES).forEach((id) => {
+    const n = $(id); if (!n) return;
+    const r = document.createElement('input');
+    r.type = 'range'; r.className = 'sbRange'; r.dataset.for = id;
+    r.min = RANGES[id][0]; r.max = RANGES[id][1]; r.step = n.step || 1; r.value = n.value; r.style.flex = '1'; r.style.minWidth = '60px';
+    n.parentNode.insertBefore(r, n);
+    r.oninput = () => { n.value = r.value; n.dispatchEvent(new Event('input', { bubbles: true })); };
+    r.onchange = () => { n.dispatchEvent(new Event('change', { bubbles: true })); try { save(); } catch (e) {} };
+    n.addEventListener('input', () => { r.value = n.value; });
+    n.addEventListener('change', () => { r.value = n.value; });
+  });
+  function syncFontSel() {
+    document.querySelectorAll('.sbRange').forEach((r) => { r.value = $(r.dataset.for).value; });
+    const list = window._sbFonts || [];
+    document.querySelectorAll('.fontSel').forEach((s) => {
+      s.innerHTML = '<option value="">— elegir de la lista (' + list.length + ') —</option>';
+      let grp = null, fam = '';
+      list.forEach((f) => {
+        const fm = f.label.split(' ')[0];
+        if (fm !== fam) { fam = fm; grp = document.createElement('optgroup'); grp.label = fm; s.appendChild(grp); }
+        const o = document.createElement('option'); o.value = f.ps; o.textContent = f.label + '  (' + f.ps + ')'; grp.appendChild(o);
+      });
+      const cur = $(s.dataset.for).value || '';
+      if (cur && !list.some((f) => f.ps === cur)) { const o = document.createElement('option'); o.value = cur; o.textContent = cur + '  (no instalada en este PC)'; s.insertBefore(o, s.children[1] || null); }
+      s.value = cur;
+    });
+  }
+  document.querySelectorAll('.fontSel').forEach((s) => {
+    s.onchange = () => {
+      if (!s.value) return;
+      const inp = $(s.dataset.for); inp.value = s.value;
+      inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
+      try { save(); } catch (e) {}
+    };
+  });
+  $('btnFonts').onclick = () => {
+    if (!nodeRequire) { document.querySelectorAll('.fontTxt').forEach((r) => { r.style.display = ''; }); status('No pude acceder a las fuentes del sistema. Escribe el nombre PostScript a mano (ej. Montserrat-Bold).', 'err'); return; }
+    status('Buscando fuentes…');
+    setTimeout(() => {
+      const fs = nodeRequire('fs'), path = nodeRequire('path');
+      const dirs = [path.join(nproc.env.WINDIR || 'C:\\Windows', 'Fonts'), path.join(nproc.env.LOCALAPPDATA || '', 'Microsoft', 'Windows', 'Fonts')];
+      const seen = {}, list = [];
+      dirs.forEach((d) => {
+        let files = [];
+        try { files = fs.readdirSync(d); } catch (e) {}
+        files.filter((f) => /\.(ttf|otf)$/i.test(f)).forEach((f) => {
+          const n = readFontNames(fs, path.join(d, f));
+          if (n && !seen[n.ps]) { seen[n.ps] = 1; list.push(n); }
+        });
+      });
+      list.sort((a, b) => a.label.localeCompare(b.label));
+      try { localStorage.setItem('sb_fonts', JSON.stringify(list)); } catch (e) {}
+      fillFontList(list);
+      status(list.length + ' fuentes encontradas. Elígelas en "Elegir regular" / "Elegir bold".', 'ok');
+    }, 30);
+  };
+
+  // ---------- presets de marca ----------
+  function getPresets() { try { return JSON.parse(localStorage.getItem('sb_presets') || '{}'); } catch (e) { return {}; } }
+  function setPresets(p) { try { localStorage.setItem('sb_presets', JSON.stringify(p)); } catch (e) {} }
+  function renderPresets(sel) {
+    const p = getPresets(), s = $('preset');
+    s.innerHTML = '<option value="">— ninguno —</option>';
+    Object.keys(p).sort().forEach((n) => { const o = document.createElement('option'); o.value = n; o.textContent = n; s.appendChild(o); });
+    if (sel !== undefined) s.value = sel;
+  }
+  $('preset').onchange = () => {
+    const p = getPresets()[$('preset').value];
+    if (!p) return;
+    applyStyle(p.style); render(); syncFontSel();
+    if (Array.isArray(p.palette) && p.palette.length) { palette = p.palette.slice(); renderSwatches(); }
+    $('presetName').value = $('preset').value;
+    save();
+    status('Preset "' + $('preset').value + '" cargado. Pulsa "Re-aplicar estilo a la pista" para actualizar subtítulos ya insertados.', 'ok');
+  };
+  $('btnPresetSave').onclick = () => {
+    const n = $('presetName').value.trim() || $('preset').value;
+    if (!n) { status('Escribe un nombre para el preset.', 'err'); return; }
+    const p = getPresets(); p[n] = { style: collectStyle(), palette: palette.slice() }; setPresets(p);
+    renderPresets(n); status('Preset "' + n + '" guardado.', 'ok');
+  };
+  $('btnPresetDel').onclick = () => {
+    const n = $('preset').value; if (!n) return;
+    const p = getPresets(); delete p[n]; setPresets(p); renderPresets(''); status('Preset "' + n + '" borrado.', 'ok');
+  };
+  $('btnPresetExport').onclick = () => {
+    const p = getPresets();
+    if (!Object.keys(p).length) { status('No hay presets guardados para exportar.', 'err'); return; }
+    const r = window.cep.fs.showSaveDialogEx('Exportar marcas', '', ['sbmarca'], 'Marcas Captionation.sbmarca');
+    if (!r || !r.data) return;
+    let path = r.data; if (!/\.sbmarca$/i.test(path)) path += '.sbmarca';
+    const w = window.cep.fs.writeFile(path, JSON.stringify({ tipo: 'subtitulos-bold-marcas', version: 3, presets: p }, null, 2), window.cep.encoding.UTF8);
+    status(w.err ? 'No se pudo guardar (error ' + w.err + ').' : 'Marcas exportadas:\n' + path, w.err ? 'err' : 'ok');
+  };
+  $('btnPresetImport').onclick = () => {
+    const r = window.cep.fs.showOpenDialogEx(false, false, 'Importar marcas', null, ['sbmarca', 'json']);
+    if (!r || !r.data || !r.data.length) return;
+    const f = window.cep.fs.readFile(r.data[0], window.cep.encoding.UTF8);
+    try {
+      const inc = JSON.parse(f.data).presets || {};
+      const p = getPresets(); let n = 0;
+      Object.keys(inc).forEach((k) => { p[k] = inc[k]; n++; });
+      setPresets(p); renderPresets(); status(n + ' marca(s) importada(s).', 'ok');
+    } catch (e) { status('Ese archivo no es un archivo de marcas válido.', 'err'); }
+  };
+
+  // ---------- muestras de color ----------
+  function renderSwatches() {
+    const box = $('swatches'); box.innerHTML = '';
+    palette.forEach((hex, i) => {
+      const d = document.createElement('div'); d.className = 'sw'; d.style.background = hex; d.title = hex;
+      d.onclick = () => { $(activeColor).value = hex; save(); };
+      d.oncontextmenu = (e) => { e.preventDefault(); palette.splice(i, 1); renderSwatches(); save(); };
+      box.appendChild(d);
+    });
+  }
+  function setActive(id) {
+    activeColor = id;
+    document.querySelectorAll('input.col').forEach((x) => x.classList.toggle('active', x.id === id));
+  }
+  document.querySelectorAll('input.col').forEach((x) => {
+    x.addEventListener('focus', () => setActive(x.id));
+    x.addEventListener('click', () => setActive(x.id));
+  });
+  $('btnSwAdd').onclick = () => { const v = $(activeColor).value.toLowerCase(); if (!palette.includes(v)) palette.push(v); renderSwatches(); save(); };
+  [['fOpR', 'fOp'], ['glowIR', 'glowI']].forEach(([r, n]) => {
+    $(r).oninput = () => { $(n).value = $(r).value; save(); };
+    $(n).addEventListener('input', () => { $(r).value = $(n).value; });
+  });
+
+  // ---------- archivos ----------
+  function pickFile(title, exts) {
+    if (!window.cep || !window.cep.fs) return null;
+    const r = window.cep.fs.showOpenDialogEx(false, false, title, null, exts);
+    return (r && r.data && r.data.length) ? r.data[0] : null;
+  }
+  $('btnMogrt').onclick = () => { const p = pickFile('Elige una plantilla .mogrt', ['mogrt']); if (p) { customMogrt = p; updateMogrtInfo(); save(); } };
+  $('btnMogrtReset').onclick = () => { customMogrt = ''; updateMogrtInfo(); save(); };
+
+  $('btnTxt').onclick = () => {
+    const p = pickFile('Elige el archivo de subtitulos', ['txt', 'srt']);
+    if (!p) return;
+    const r = window.cep.fs.readFile(p, window.cep.encoding.UTF8);
+    if (r.err) { status('No pude leer el archivo (error ' + r.err + ').', 'err'); return; }
+    const parsed = parseSubs(r.data);
+    if (!parsed.length) { status('No encontré subtítulos con tiempos en ese archivo.', 'err'); return; }
+    subs = parsed;
+    const hasMarks = /\*/.test(r.data);
+    if (!hasMarks) applyRuleAll();
+    $('txtInfo').textContent = p.split(/[\\/]/).pop() + ' · ' + subs.length + ' subtítulos' + (hasMarks ? ' · con *asteriscos*' : '');
+    render(); status('');
+  };
+
+  // ---------- parser ----------
+  const RE_TC  = /(\d{1,2}):(\d{2}):(\d{2})[:;](\d{2})\s*(?:-->|–|-)\s*(\d{1,2}):(\d{2}):(\d{2})[:;](\d{2})/;
+  const RE_SRT = /(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})/;
+
+  function parseSubs(txt) {
+    const lines = txt.replace(/^\uFEFF/, '').split(/\r\n|\r|\n/);
+    const out = [];
+    let cur = null;
+    const flush = () => { if (cur && cur.text.trim()) out.push({ start: cur.start, end: cur.end, tokens: tokenize(cur.text.trim()) }); cur = null; };
+    for (const raw of lines) {
+      const line = raw.trim();
+      let m;
+      if ((m = line.match(RE_TC))) {
+        flush();
+        cur = { text: '', start: { sec: +m[1] * 3600 + +m[2] * 60 + +m[3], f: +m[4] }, end: { sec: +m[5] * 3600 + +m[6] * 60 + +m[7], f: +m[8] } };
+      } else if ((m = line.match(RE_SRT))) {
+        flush();
+        const ms = (h, mi, s, x) => ((+h * 3600 + +mi * 60 + +s) * 1000) + +(x + '00').slice(0, 3);
+        cur = { text: '', start: { ms: ms(m[1], m[2], m[3], m[4]) }, end: { ms: ms(m[5], m[6], m[7], m[8]) } };
+      } else if (!line) {
+        flush();
+      } else if (cur) {
+        if (/^\d+$/.test(line) && !cur.text) continue;
+        cur.text += (cur.text ? ' ' : '') + line;
+      }
+    }
+    flush();
+    return out;
+  }
+
+  function tokenize(text) {
+    const parts = text.split(/\s+/).filter(Boolean);
+    let inBold = false;
+    return parts.map((p) => {
+      let w = p, b = inBold;
+      if (/^[^\w*]*\*/.test(w)) { b = true; inBold = true; w = w.replace('*', ''); }
+      if (w.includes('*')) { inBold = false; }
+      return { w: w.replace(/\*/g, ''), b };
+    }).filter((t) => t.w);
+  }
+
+  // ---------- bold automático ----------
+  const norm = (w) => w.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9ñ]/g, '');
+  const ARTIC = new Set('el la los las un una unos unas del al mi mis tu tus su sus nuestro nuestra nuestros nuestras este esta estos estas ese esa esos esas'.split(' '));
+  const FILLER = new Set('entonces justamente primeramente realmente basicamente simplemente obviamente digamos osea tipo verdad bueno pues asi solo tan tanto mismo misma parte cosa cosas forma manera dices dice decir hacer hace sabe saber puede pueden pudiera pudieran tenemos tener tienen tiene quiero quieres sea fuera ser estar estan esta tenga tengan otro otros otra otras'.split(' '));
+  const EMPH = new Set('importante importantes nunca siempre jamas nadie todo todos toda todas nada mejor peor gratis dinero primero segundo tercero cuarto primera segunda tercera clave secreto error errores problema problemas peligro peligroso toxico toxicos danina danino muerte salud cuidado ojo increible enorme cero mil millones'.split(' '));
+  const VERBISH = /(ar|er|ir|aba|aban|ando|iendo|ado|ados|ido|idos|ria|rian|iera|ieran|ara|aran|amos|emos|imos|aron|ieron|ian)$/;
+
+  function wordScore(w) {
+    const n = norm(w);
+    if (!n || STOP.has(n) || ARTIC.has(n) || FILLER.has(n)) return -1;
+    let sc = Math.min(n.length, 9);
+    if (/\d/.test(n)) sc += 6;
+    if (EMPH.has(n)) sc += 5;
+    if (n.length <= 3) sc -= 3;
+    if (VERBISH.test(n) && !EMPH.has(n)) sc -= 3;
+    return sc;
+  }
+  function pickPhrase(t, maxWords) {
+    const scores = t.map((x) => wordScore(x.w));
+    let best = -1;
+    scores.forEach((sc, i) => { if (sc > 0 && (best < 0 || sc >= scores[best])) best = i; });
+    if (best < 0) return;
+    const limit = Math.max(1, Math.min(maxWords, t.length - 1 || 1));
+    let a = best, b = best;
+    const endsPhrase = (w) => /[.,;:!?…)]$/.test(w);
+    while (a > 0 && b - a + 1 < limit && !endsPhrase(t[a - 1].w)) {
+      const n = norm(t[a - 1].w);
+      if (ARTIC.has(n)) { a--; break; }
+      if (scores[a - 1] > 0) a--; else break;
+    }
+    while (b < t.length - 1 && b - a + 1 < limit && !endsPhrase(t[b].w) && scores[b + 1] > 0) b++;
+    for (let i = a; i <= b; i++) t[i].b = true;
+  }
+  function applyRule(s) {
+    const rule = $('rule').value, t = s.tokens;
+    t.forEach((x) => { x.b = false; });
+    if (rule === 'phrase') pickPhrase(t, 3);
+    else if (rule === 'keyword') pickPhrase(t, 1);
+    else if (rule === 'lastN') { const n = Math.max(1, parseInt($('ruleN').value, 10) || 1); t.forEach((x, i) => { x.b = i >= t.length - n; }); }
+    else if (rule === 'allButFirst') t.forEach((x, i) => { x.b = i > 0; });
+    else if (rule === 'list') { const L = new Set($('ruleList').value.split(',').map((x) => norm(x.trim())).filter(Boolean)); t.forEach((x) => { x.b = L.has(norm(x.w)); }); }
+  }
+  function applyRuleAll() { subs.forEach(applyRule); }
+  function syncRuleUI() {
+    $('rowN').style.display = $('rule').value === 'lastN' ? '' : 'none';
+    $('rowList').style.display = $('rule').value === 'list' ? '' : 'none';
+  }
+  $('rule').onchange = () => { syncRuleUI(); save(); };
+  $('btnRule').onclick = () => { applyRuleAll(); render(); save(); };
+  $('caps').onchange = () => { render(); save(); };
+
+  // ---------- lista ----------
+  const fmt = (s) => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  function tcLabel(t) {
+    if (t.ms !== undefined) return fmt(Math.floor(t.ms / 1000)) + '.' + String(t.ms % 1000).padStart(3, '0').slice(0, 2);
+    return fmt(t.sec) + ':' + String(t.f).padStart(2, '0');
+  }
+  function render() {
+    const caps = $('caps').checked, list = $('list');
+    list.innerHTML = '';
+    subs.forEach((s) => {
+      const row = document.createElement('div'); row.className = 'sub';
+      const tc = document.createElement('span'); tc.className = 'tc'; tc.textContent = tcLabel(s.start);
+      const ws = document.createElement('div'); ws.className = 'words';
+      s.tokens.forEach((t) => {
+        const w = document.createElement('span');
+        w.className = 'w' + (t.b ? ' b' : '');
+        w.textContent = caps ? t.w.toLocaleUpperCase('es') : t.w;
+        w.onclick = () => { t.b = !t.b; w.classList.toggle('b', t.b); };
+        ws.appendChild(w);
+      });
+      row.appendChild(tc); row.appendChild(ws); list.appendChild(row);
+    });
+    queuePv();
+  }
+  // "Resalte al centro": solo UNA palabra resaltada (la más larga de las marcadas)
+  function oneBold(toks) {
+    if (dis === 1) return toks;
+    const L = (w) => w.replace(/[^0-9a-záéíóúüñ]/gi, '').length;
+    let best = -1;
+    toks.forEach((t, i) => { if (t.b && (best < 0 || L(t.w) >= L(toks[best].w))) best = i; });
+    // sin ninguna marcada: se resalta la palabra más larga (siempre hay una grande en el centro)
+    if (best < 0) toks.forEach((t, i) => { if (L(t.w) && (best < 0 || L(t.w) > L(toks[best].w))) best = i; });
+    return best < 0 ? toks : toks.map((t, i) => ({ w: t.w, b: i === best }));
+  }
+  function buildText(s) {
+    const caps = $('caps').checked, t = oneBold(s.tokens), out = [];
+    const W = (x) => caps ? x.w.toLocaleUpperCase('es') : x.w;
+    for (let i = 0; i < t.length;) {
+      if (t[i].b) { let j = i; while (j < t.length && t[j].b) j++; out.push('*' + t.slice(i, j).map(W).join(' ') + '*'); i = j; }
+      else { out.push(W(t[i])); i++; }
+    }
+    return out.join(' ');
+  }
+  // Inicio de cada palabra (segundos desde el inicio del clip), repartido según el largo de la palabra.
+  function wordTimes(s, durSec) {
+    const t = s.tokens;
+    if (s.wordStarts && s.wordStarts.length === t.length) return s.wordStarts.map((x) => x.toFixed(3)).join(';');
+    const weights = t.map((x) => x.w.length + 2), total = weights.reduce((a, b) => a + b, 0) || 1;
+    const span = durSec * 0.9;
+    let acc = 0;
+    return weights.map((w) => { const v = span * acc / total; acc += w; return v.toFixed(3); }).join(';');
+  }
+
+  // ---------- secuencia ----------
+  async function readSeq() {
+    const r = await evalJsx('sb_info()');
+    let info;
+    try { info = JSON.parse(r); } catch (e) { status('Respuesta inesperada de Premiere: ' + r, 'err'); return null; }
+    if (!info.ok) { status(info.err, 'err'); return null; }
+    seqInfo = info; pvFmt = info.h > info.w ? 'v' : 'h'; queuePv();
+    $('seqName').textContent = info.name + ' · ' + info.w + '×' + info.h;
+    updateMogrtInfo();
+    const sel = $('track'), prev = sel.value;
+    sel.innerHTML = '';
+    let lastUsed = -1;
+    info.tracks.forEach((t) => { if (t.n > 0) lastUsed = t.i; });
+    let def = 'new';
+    info.tracks.forEach((t) => {
+      const o = document.createElement('option');
+      o.value = String(t.i);
+      o.textContent = 'V' + (t.i + 1) + (t.n ? ' (' + t.n + ' clips)' : ' (vacía)');
+      sel.appendChild(o);
+      if (def === 'new' && t.i > lastUsed && t.n === 0) def = String(t.i);
+    });
+    const o = document.createElement('option'); o.value = 'new'; o.textContent = '+ Nueva pista arriba'; sel.appendChild(o);
+    sel.value = (prev && [...sel.options].some((x) => x.value === prev)) ? prev : def;
+    return info;
+  }
+  $('btnSeq').onclick = () => { readSeq(); };
+
+  const hexRGB = (h) => [1, 3, 5].map((i) => parseInt(h.substr(i, 2), 16));
+  function isVert() { return seqInfo ? seqInfo.h > seqInfo.w : pvFmt === 'v'; }
+  // valores que de verdad se envían (con la zona segura aplicada)
+  function effVals(V) {
+    const v = {}; Object.keys(NUMS).forEach((id) => { v[id] = +$(id).value; });
+    const cl = (x, a, b) => Math.min(b, Math.max(a, x));
+    if (V === undefined ? isVert() : V) {
+      // 9:16 — TikTok/Reels tapan ~14% arriba, ~22% abajo (descripción) y ~13% a la derecha (botones)
+      if ($('safeZone').checked) { v.posY = cl(v.posY, 16, 70); v.posX = cl(v.posX, 12, 46); v.cpl = Math.min(v.cpl, 18); }
+    } else {
+      // 16:9 — dentro del área segura de acción (90%)
+      v.posY = cl(v.posY, 8, 88); v.posX = cl(v.posX, 8, 92);
+    }
+    return v;
+  }
+  function styleParams() {
+    const nums = [[P.dis, dis === 2 ? 3 : dis], [P.align, align]]; // el antiguo Tipográfico (2) pasa a Captionation (3)
+    const v = effVals();
+    Object.keys(NUMS).forEach((id) => nums.push([NUMS[id], v[id]]));
+    const colors = Object.keys(COLS).map((id) => [COLS[id], hexRGB($(id).value)]);
+    const fonts = [];
+    if ($('fontReg').value.trim()) fonts.push([P.fReg, $('fontReg').value.trim()]);
+    if ($('fontBold').value.trim()) fonts.push([P.fBold, $('fontBold').value.trim()]);
+    return { textName: P.texto, timesName: P.tiempos, nums, colors, fonts };
+  }
+  const FONT_HELP = '\n\nNo se pudo cambiar la fuente en algunos clips: en After Effects activa "Permitir edición de fuentes" en Fuente regular / Fuente bold (Gráfico esencial) y vuelve a exportar la plantilla.';
+
+  $('btnInsert').onclick = async () => {
+    save();
+    if (!subs.length) { status('Primero carga el .txt con los subtítulos.', 'err'); return; }
+    const info = await readSeq(); if (!info) return;
+    const mogrt = customMogrt || bundledMogrt(info);
+
+    let track = $('track').value;
+    if (track === 'new') {
+      const r = await evalJsx('sb_addTrack()');
+      if (r.startsWith('err:')) { status(r.slice(4), 'err'); return; }
+      track = r; await readSeq(); $('track').value = track;
+    }
+    track = parseInt(track, 10);
+
+    const tb = Number(info.timebase), fps = 254016000000 / tb, nominal = Math.round(fps);
+    const offset = $('startMode').value === 'playhead' ? Number(info.playhead) : 0;
+    const frames = (t) => t.ms !== undefined ? Math.round(t.ms / 1000 * fps) : t.sec * nominal + t.f;
+    const items = subs.map((s) => {
+      const f0 = frames(s.start), f1 = frames(s.end);
+      return { s: String(offset + f0 * tb), e: String(offset + f1 * tb), t: buildText(s), tm: wordTimes(s, (f1 - f0) / fps) };
+    });
+    const p = styleParams();
+    let done = 0, fontFail = 0; const errs = [];
+    const CHUNK = 6;
+    for (let i = 0; i < items.length; i += CHUNK) {
+      status('Insertando ' + Math.min(i + CHUNK, items.length) + ' / ' + items.length + '…');
+      const r = await evalJsx('sb_insert(' + lit({ mogrt, track, p, items: items.slice(i, i + CHUNK) }) + ')');
+      if (r.startsWith('err:')) { status(r.slice(4), 'err'); return; }
+      const [ok, rest, ff] = r.slice(3).split('|');
+      done += parseInt(ok, 10) || 0;
+      fontFail += parseInt(ff, 10) || 0;
+      if (rest) errs.push(rest);
+    }
+    await readSeq();
+    status('Listo: ' + done + ' subtítulos insertados en V' + (track + 1) + '.' + (errs.length ? '\n' + errs.join('\n') : '') + (fontFail ? FONT_HELP : ''),
+           errs.length || fontFail ? 'err' : 'ok');
+  };
+
+  // ---------- vista previa dentro del panel (con el texto de los subtítulos cargados) ----------
+  var pvRaf = 0, pvFontKey = '', pvCtx = null;
+  let SAMPLE = [{ w: 'Cuando' }, { w: 'se' }, { w: 'hierve', b: true }, { w: 'el' }, { w: 'agua,' }];
+  try { if (localStorage.getItem('sb_lang') === 'en') SAMPLE = [{ w: 'When' }, { w: 'the' }, { w: 'water' }, { w: 'boils', b: true }, { w: 'down,' }]; } catch (e) {}
+  function queuePv() { if (!pvRaf) pvRaf = requestAnimationFrame(renderPreview); }
+  const hexA = (h, a) => { const c = hexRGB(h); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; };
+  function pvFontFace() {
+    const fl = window._sbFonts || [];
+    const src = (ps) => { const f = fl.find((x) => x.ps === ps); return 'local("' + ps + '")' + (f ? ', local("' + f.label + '")' : ''); };
+    const r = $('fontReg').value.trim() || 'SegoeUI', b = $('fontBold').value.trim() || 'SegoeUI-Bold';
+    if (r + '|' + b === pvFontKey) return;
+    pvFontKey = r + '|' + b;
+    $('pvFonts').textContent = '@font-face{font-family:"pvReg";src:' + src(r) + '}@font-face{font-family:"pvBold";src:' + src(b) + '}';
+    if (document.fonts) Promise.all([document.fonts.load('40px "pvReg"'), document.fonts.load('40px "pvBold"')]).then(queuePv).catch(() => {});
+  }
+  // cortes equilibrados (misma regla que la plantilla)
+  function balLines(ws, wts, maxC, maxL) {
+    const n0 = ws.length, cum = []; let tot = 0;
+    for (let i = 0; i < n0; i++) { cum.push(tot); tot += wts[i] + (i < n0 - 1 ? 1 : 0); }
+    if (n0 < 2 || tot <= maxC * 1.15) return [ws];
+    const n = Math.min(maxL || 3, Math.ceil(tot / (maxC * 1.1))), cuts = []; let prev = 0;
+    for (let r = 1; r < n; r++) {
+      const goal = tot * r / n; let bj = -1, bd = 1e9;
+      for (let i = prev + 1; i < n0; i++) {
+        let d = Math.abs(cum[i] - goal);
+        if (ws[i - 1].w.length <= 3) d += tot / n * 0.35;
+        if (r === n - 1 && i === n0 - 1 && ws[i].w.length <= 4) d += tot;
+        if (d < bd) { bd = d; bj = i; }
+      }
+      if (bj < 0) break;
+      cuts.push(bj); prev = bj;
+    }
+    const out = []; let s = 0;
+    cuts.concat([n0]).forEach((c) => { out.push(ws.slice(s, c)); s = c; });
+    return out;
+  }
+  function renderPreview() {
+    pvRaf = 0;
+    pvFontFace();
+    const V = pvFmt === 'v', W = V ? 1080 : 1920, H = V ? 1920 : 1080;
+    const k = Math.min(Math.max(120, $('pvWrap').clientWidth) / W, (V ? 300 : 220) / H);
+    $('pv').style.width = Math.round(W * k) + 'px'; $('pv').style.height = Math.round(H * k) + 'px';
+    const stg = $('pvStage'); stg.style.width = W + 'px'; stg.style.height = H + 'px'; stg.style.transform = 'scale(' + k + ')';
+    document.querySelectorAll('#pvFmt button').forEach((b) => b.classList.toggle('on', (b.dataset.f === 'v') === V));
+    const v = effVals(V), caps = $('caps').checked;
+    const size = v.tam, esc0 = Math.max(10, v.esc) / 100;
+    const sub = subs[pvIndex] || subs[0];
+    const all = oneBold(sub ? sub.tokens : SAMPLE).map((t, i) => ({ i, w: caps ? t.w.toLocaleUpperCase('es') : t.w, b: !!t.b }));
+    const kar = +$('kar').value, act = all.length > 1 ? 1 : 0;
+    const he = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    const span = (t, sz) => {
+      let s = 'font-family:' + (t.b ? 'pvBold' : 'pvReg') + ',Segoe UI;font-size:' + sz + 'px;color:' + $(t.b ? 'colBold' : 'colReg').value + ';';
+      if (kar && t.i === act) {
+        s += 'color:' + $('colAct').value + ';';
+        if (kar === 1) s += 'background:' + $('colCaja').value + ';box-shadow:0 0 0 ' + v.cajaM + 'px ' + $('colCaja').value + ';border-radius:' + v.cajaR + 'px;';
+      }
+      return '<span style="' + s + '">' + he(t.w) + '</span>';
+    };
+    const lineHtml = (ln, szB) => ln.map((t) => span(t, t.b ? szB : size)).join(' ');
+    let fx = 'letter-spacing:' + (v.track2 / 1000) + 'em;';
+    if (v.bordeW > 0) fx += '-webkit-text-stroke:' + v.bordeW + 'px ' + $('colBorde').value + ';paint-order:stroke fill;';
+    const filt = [];
+    if (v.sombra > 0) filt.push('drop-shadow(4px 4px 9px rgba(0,0,0,' + Math.min(1, 0.5 * v.sombra / 100) + '))');
+    if (v.glowI > 0) filt.push('drop-shadow(0 0 ' + (v.glowR / 2) + 'px ' + hexA($('colReg').value, Math.min(1, v.glowI / 100)) + ')');
+    if (filt.length) fx += 'filter:' + filt.join(' ') + ';';
+    if (v.fOp > 0) fx += 'background:' + hexA($('fColor').value, v.fOp / 100) + ';padding:' + v.fMargen + 'px;border-radius:' + v.fRed + 'px;';
+    // font-size del bloque = tamaño real: así los espacios entre palabras tienen el ancho correcto
+    const pos = 'left:' + (W * v.posX / 100) + 'px;top:' + (H * v.posY / 100) + 'px;transform:translate(-50%,-50%);font-size:' + size + 'px;font-family:pvReg,Segoe UI;';
+    let html = '';
+    if (V && $('safeZone').checked) {
+      html += '<div class="pvSafe" style="left:0;top:0;width:100%;height:14%"></div><div class="pvSafe" style="left:0;bottom:0;width:100%;height:22%"></div>' +
+              '<div class="pvSafe" style="right:0;top:14%;width:13%;height:64%"></div>';
+    }
+    const bS = all.findIndex((t) => t.b); let bE = -1; all.forEach((t, i) => { if (t.b) bE = i; });
+    {
+      // Captionation: antes / resaltado solo / después (máx. 3 renglones)
+      const lines = (dis !== 1 && bS >= 0)
+        ? [all.slice(0, bS), all.slice(bS, bE + 1), all.slice(bE + 1)].filter((l) => l.length)
+        : balLines(all, all.map((t) => t.w.length * (t.b ? esc0 : 1)), Math.max(5, v.cpl));
+      let escU = esc0;
+      if (dis !== 1 && bS >= 0) { const lim = W * 0.86 / (Math.max(1, all[bS].w.length) * size * 0.62); if (escU > lim) escU = Math.max(1, lim); }
+      const ta = align === 1 ? 'left' : (align === 3 ? 'right' : 'center');
+      const capt = dis !== 1 && bS >= 0;
+      const body = capt
+        ? lines.map((ln, i) => '<div style="line-height:1;margin-top:' + (i ? size * 0.22 : 0) + 'px">' + lineHtml(ln, size * escU) + '</div>').join('')
+        : lines.map((ln) => lineHtml(ln, size * escU)).join('<br>');
+      html += '<div class="pvBlk" style="' + pos + 'text-align:' + ta + ';line-height:1.2;' + fx + '">' + body + '</div>';
+    }
+    stg.innerHTML = html;
+    $('pvInfo').textContent = 'Vista previa · ' + (sub ? 'subtítulo ' + (subs.indexOf(sub) + 1) + ' de ' + subs.length + ' (clic en la lista para cambiar)' : 'texto de ejemplo');
+  }
+  document.querySelectorAll('#pvFmt button').forEach((b) => { b.onclick = () => { pvFmt = b.dataset.f; queuePv(); }; });
+  function pvEvent(e) {
+    const row = e.target && e.target.closest ? e.target.closest('.sub') : null;
+    if (row) pvIndex = Array.prototype.indexOf.call($('list').children, row);
+    queuePv();
+  }
+  document.addEventListener('input', pvEvent);
+  document.addEventListener('change', pvEvent);
+  document.addEventListener('click', pvEvent);
+  window.addEventListener('resize', queuePv);
+  // azul = acción nueva · amarillo = ajustar
+  ['btnWhisper', 'btnTxt', 'btnInsert', 'btnSeq', 'btnPresetExport', 'btnPresetImport', 'btnMogrt', 'btnSwAdd'].forEach((id) => { if ($(id)) $(id).classList.add('primary'); });
+  ['btnRule', 'btnRestyle', 'btnPresetSave', 'btnFonts', 'btnMogrtReset'].forEach((id) => { if ($(id)) $(id).classList.add('adj'); });
+  queuePv();
+
+  $('btnRestyle').onclick = async () => {
+    save();
+    const info = await readSeq(); if (!info) return;
+    const track = parseInt($('track').value, 10);
+    if (isNaN(track)) { status('Elige una pista existente.', 'err'); return; }
+    status('Aplicando estilo…');
+    const r = await evalJsx('sb_restyle(' + lit({ track, p: styleParams() }) + ')');
+    if (r.startsWith('err:')) { status(r.slice(4), 'err'); return; }
+    const parts = r.slice(3).split('|'), ff = parseInt(parts[2], 10) || 0;
+    status('Estilo aplicado a ' + parts[0] + ' subtítulos de V' + (track + 1) + '.' + (ff ? FONT_HELP : ''), ff ? 'err' : 'ok');
+  };
+
+  // =================== Transcripción con Whisper (whisper.cpp, local) ===================
+  const W_ENGINE = { url: 'https://github.com/ggml-org/whisper.cpp/releases/download/b5454/whisper-blas-bin-x64.zip', exe: 'whisper\\Release\\whisper-cli.exe' };
+  const W_MODELS = {
+    small:  { file: 'ggml-small-q8_0.bin',          size: 264464607, sha: '49c8fb02b65e6049d5fa6c04f81f53b867b5ec9540406812c643f177317f779f' },
+    medium: { file: 'ggml-medium-q8_0.bin',         size: 823369779, sha: '42a1ffcbe4167d224232443396968db4d02d4e8e87e213d3ee2e03095dea6502' },
+    turbo:  { file: 'ggml-large-v3-turbo-q8_0.bin', size: 874188075, sha: '317eb69c11673c9de1e1f0d459b253999804ec71ac4c23c17ecf5fbe24e259a1' }
+  };
+  const W_MODEL_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/';
+  let wProc = null, wCancel = false;
+
+  function wSet(msg, pct) { $('wStatus').textContent = msg; if (pct !== undefined) $('wBar').style.width = Math.max(0, Math.min(100, pct)) + '%'; }
+  function wBase() { const path = nodeRequire('path'); return path.join(nproc.env.LOCALAPPDATA || '', 'SubtitulosBold'); }
+  const mb = (n) => (n / 1048576).toFixed(0) + ' MB';
+
+  function wDownload(url, dest, onProg) {
+    const https = nodeRequire('https'), fs = nodeRequire('fs');
+    return new Promise((res, rej) => {
+      const go = (u, n) => {
+        const req = https.get(u, { headers: { 'User-Agent': 'SubtitulosBold' } }, (r) => {
+          if ([301, 302, 303, 307, 308].includes(r.statusCode) && r.headers.location && n < 10) { r.resume(); go(new URL(r.headers.location, u).toString(), n + 1); return; }
+          if (r.statusCode !== 200) { r.resume(); rej(new Error('HTTP ' + r.statusCode + ' al descargar')); return; }
+          const total = +r.headers['content-length'] || 0; let got = 0;
+          const out = fs.createWriteStream(dest);
+          r.on('data', (c) => { got += c.length; if (wCancel) { req.destroy(); out.destroy(); rej(new Error('Cancelado')); } else if (onProg) onProg(got, total); });
+          r.pipe(out);
+          out.on('finish', () => out.close(() => res()));
+          r.on('error', rej); out.on('error', rej);
+        });
+        req.on('error', rej);
+      };
+      go(url, 0);
+    });
+  }
+  function wSha256(file) {
+    const crypto = nodeRequire('crypto'), fs = nodeRequire('fs');
+    return new Promise((res, rej) => { const h = crypto.createHash('sha256'); fs.createReadStream(file).on('data', (d) => h.update(d)).on('end', () => res(h.digest('hex'))).on('error', rej); });
+  }
+  function wRun(exe, args, onErrLine, onOutLine) {
+    const cp = nodeRequire('child_process');
+    return new Promise((res, rej) => {
+      const p = cp.spawn(exe, args, { windowsHide: true });
+      wProc = p;
+      let err = '';
+      p.stderr.on('data', (d) => { const t = d.toString(); err += t; if (onErrLine) t.split(/\r?\n/).forEach(onErrLine); });
+      p.stdout.on('data', (d) => { if (onOutLine) d.toString().split(/\r?\n/).forEach(onOutLine); });
+      p.on('error', rej);
+      p.on('close', (code) => { wProc = null; if (code === 0) res(); else rej(new Error(wCancel ? 'Cancelado' : 'whisper termino con error ' + code + '\n' + err.split(/\r?\n/).slice(-4).join('\n'))); });
+    });
+  }
+
+  async function wEnsureEngine() {
+    const fs = nodeRequire('fs'), path = nodeRequire('path'), cp = nodeRequire('child_process');
+    const base = wBase(), exe = path.join(base, W_ENGINE.exe);
+    if (fs.existsSync(exe)) return exe;
+    fs.mkdirSync(base, { recursive: true });
+    const zip = path.join(base, 'whisper-engine.zip');
+    await wDownload(W_ENGINE.url, zip, (g, t) => wSet('Descargando el motor de transcripción… ' + mb(g) + (t ? ' de ' + mb(t) : ''), t ? g / t * 100 : 0));
+    wSet('Instalando el motor…', 100);
+    const q = (p) => "'" + p.replace(/'/g, "''") + "'";
+    await new Promise((res, rej) => cp.execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
+      'Expand-Archive -LiteralPath ' + q(zip) + ' -DestinationPath ' + q(path.join(base, 'whisper')) + ' -Force'],
+      { windowsHide: true }, (e) => (e ? rej(e) : res())));
+    try { fs.unlinkSync(zip); } catch (e) {}
+    if (!fs.existsSync(exe)) throw new Error('No se pudo instalar el motor de transcripción.');
+    return exe;
+  }
+  async function wEnsureModel(key) {
+    const fs = nodeRequire('fs'), path = nodeRequire('path');
+    const m = W_MODELS[key], dir = path.join(wBase(), 'models'), file = path.join(dir, m.file);
+    if (fs.existsSync(file) && fs.statSync(file).size === m.size) return file;
+    fs.mkdirSync(dir, { recursive: true });
+    const part = file + '.part';
+    await wDownload(W_MODEL_URL + m.file, part, (g) => wSet('Descargando el modelo (solo la primera vez)… ' + mb(g) + ' de ' + mb(m.size), g / m.size * 100));
+    wSet('Verificando el modelo…', 100);
+    const h = await wSha256(part);
+    if (h !== m.sha) { try { fs.unlinkSync(part); } catch (e) {} throw new Error('El modelo descargado no es válido (huella distinta). Intenta de nuevo.'); }
+    fs.renameSync(part, file);
+    return file;
+  }
+
+  // Agrupa palabras [{t, from, to} en ms] en subtítulos con el inicio de cada palabra
+  const CONN = new Set('a al ante con contra de del desde en entre hacia hasta para por sin sobre tras el la los las lo le les un una unos unas y e o u ni que se me te nos su sus mi mis tu tus es muy mas más pero como si cuando donde porque pues ya'.split(' '));
+  function wSegment(words, maxChars) {
+    const out = [];
+    let cur = [];
+    const len = (arr) => arr.reduce((a, w) => a + w.t.length + 1, -1);
+    const flush = () => {
+      if (!cur.length) return;
+      const st = cur[0].from, en = cur[cur.length - 1].to;
+      out.push({ start: { ms: st }, end: { ms: Math.max(en, st + 400) },
+                 tokens: cur.map((w) => ({ w: w.t, b: false })), wordStarts: cur.map((w) => (w.from - st) / 1000) });
+      cur = [];
+    };
+    words.forEach((w) => {
+      const prev = cur[cur.length - 1];
+      if (prev) {
+        const gap = w.from - prev.to;
+        const would = len(cur) + 1 + w.t.length;
+        const strongEnd = /[.!?…]$/.test(prev.t);
+        const softEnd = /[,;:]$/.test(prev.t) && len(cur) >= maxChars * 0.5;
+        if (gap > 600 || strongEnd || softEnd) flush();
+        else if (would > maxChars) {
+          // no terminar en conector ("que", "se", "de", "al"…): pasa al siguiente subtítulo
+          const carry = [];
+          while (cur.length > 1 && !/[.,;:!?…]$/.test(cur[cur.length - 1].t) && CONN.has(cur[cur.length - 1].t.toLowerCase().replace(/[^a-záéíóúüñ]/g, ''))) carry.unshift(cur.pop());
+          flush(); cur = carry;
+        }
+      }
+      cur.push(w);
+    });
+    flush();
+    // si la pausa entre dos subtítulos es corta, el anterior se queda hasta que entra el siguiente
+    for (let i = 0; i < out.length - 1; i++) {
+      const gap = out[i + 1].start.ms - out[i].end.ms;
+      if (gap > 0 && gap < 350) out[i].end.ms = out[i + 1].start.ms;
+    }
+    return out;
+  }
+
+  // Corrige palabras de marca mal escritas (ej. Rodrigues -> Rodríguez) por parecido
+  function wDist(a, b) {
+    const d = []; for (let i = 0; i <= a.length; i++) { d[i] = [i]; } for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[a.length][b.length];
+  }
+  function wFixVocab(words, vocab) {
+    const list = vocab.split(',').map((x) => x.trim()).filter((x) => x && !/s/.test(x));
+    words.forEach((w) => {
+      const m = w.t.match(/^([¿¡"'(«]*)(.*?)([.,;:!?…"')»]*)$/);
+      if (!m || !m[2]) return;
+      const n = norm(m[2]);
+      for (const v of list) {
+        const nv = norm(v);
+        if (n === nv) { w.t = m[1] + v + m[3]; return; }
+        if (nv.length >= 4 && n[0] === nv[0] && n.length <= nv.length && nv.length - n.length <= 1 && wDist(n, nv) <= 1) { w.t = m[1] + v + m[3]; return; }
+      }
+    });
+  }
+
+  $('btnWhisperStop').onclick = () => { wCancel = true; if (wProc) { try { wProc.kill(); } catch (e) {} } };
+  $('btnWhisper').onclick = async () => {
+    if (!nodeRequire) { wSet('Reinstala el plugin para poder transcribir.', 0); return; }
+    const fs = nodeRequire('fs'), os = nodeRequire('os');
+    wCancel = false;
+    $('btnWhisper').disabled = true; $('btnWhisperStop').style.display = '';
+    let wavPath = null, outBase = null;
+    const wClean = () => { [wavPath, outBase && outBase + '.json'].forEach((f) => { try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) {} }); };
+    // borra audios temporales que hayan quedado de sesiones anteriores
+    try { fs.readdirSync(os.tmpdir()).filter((n) => /^sb_audio_\d+\.(wav|mp3|json)$/i.test(n)).forEach((n) => { try { fs.unlinkSync(nodeRequire('path').join(os.tmpdir(), n)); } catch (e) {} }); } catch (e) {}
+    $('wLive').textContent = '';
+    try {
+      const info = await readSeq(); if (!info) throw new Error('Abre la secuencia que quieres subtitular.');
+      // rango: entrada/salida (I/O) si están marcadas; si no, toda la secuencia
+      const rr = await evalJsx('sb_audioRange()');
+      if (!rr.startsWith('ok:')) throw new Error(rr.startsWith('err:') ? rr.slice(4) : rr);
+      const [inS, durS, useIO] = rr.slice(3).split('|').map(Number);
+      const hms = (s) => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? h + ' h ' + m + ' min' : m ? m + ' min ' + x + ' s' : x + ' s'; };
+      if (durS < 0.5) throw new Error('La secuencia está vacía.');
+      if (!useIO && durS > 20 * 60 &&
+          !window.confirm('La secuencia dura ' + hms(durS) + '. Transcribirla completa puede tardar bastante.\n\n' +
+            'Para transcribir solo una parte: pulsa Cancelar, marca Entrada (I) y Salida (O) en la línea de tiempo y vuelve a pulsar "Transcribir secuencia".\n\n¿Transcribir todo?')) {
+        throw new Error('Marca Entrada (I) y Salida (O) en la secuencia para transcribir solo ese tramo.');
+      }
+
+      const exe = await wEnsureEngine();
+      const model = await wEnsureModel($('wModel').value);
+
+      const wav = nodeRequire('path').join(os.tmpdir(), 'sb_audio_' + Date.now() + (IS_AE ? '.wav' : '.mp3'));
+      wavPath = wav;
+      const expBytes = durS * (IS_AE ? 192000 : 16000); // WAV 48 kHz 16-bit / MP3 128 kbps
+      const expShow = () => {
+        let got = 0; try { got = fs.statSync(wav).size; } catch (e) {}
+        wSet('Paso 1 de 2 · ' + (IS_AE ? 'After Effects renderiza el audio' : 'Premiere exporta el audio') + ' (' + hms(durS) + (useIO ? (IS_AE ? ', área de trabajo' : ', entre entrada y salida') : '') + ')… ' +
+             mb(got) + ' de ~' + mb(expBytes) + ' (archivo temporal, se borra al terminar)', got / expBytes * 100);
+      };
+      const expTick = setInterval(expShow, 500); expShow();
+      let r;
+      try { r = await evalJsx('sb_exportAudio(' + lit(wav) + ',' + (useIO ? 'true' : 'false') + ')'); } finally { clearInterval(expTick); }
+      if (!r.startsWith('ok:')) throw new Error(r.startsWith('err:') ? r.slice(4) : r);
+      wavPath = r.slice(3);
+      if (wCancel) throw new Error('Cancelado');
+
+      outBase = wavPath.replace(/\.(wav|mp3)$/i, '');
+      const threads = Math.max(2, Math.min(16, (os.cpus() || []).length || 4));
+      const args = ['-m', model, '-f', wavPath, '-l', $('wLang').value, '-ml', '1', '-sow', '-oj', '-of', outBase, '-pp', '-t', String(threads)];
+      const vocab = $('wPrompt').value.trim();
+      if (vocab) args.push('--prompt', 'En este video se menciona: ' + vocab + '.');
+      const t0 = Date.now(); let pct = 0; const live = [];
+      const show = () => {
+        const el = (Date.now() - t0) / 1000;
+        const eta = pct >= 2 ? ' · faltan ~' + hms(el * (100 - pct) / pct) : '';
+        wSet('Paso 2 de 2 · Transcribiendo ' + hms(durS) + ' de audio… ' + pct + '% · ' + hms(el) + eta, pct);
+      };
+      const tick = setInterval(show, 1000); show();
+      const toSec = (h, m, x) => +h * 3600 + +m * 60 + +x;
+      try {
+        await wRun(exe, args,
+          (line) => { const m = line.match(/progress\s*=\s*(\d+)%/); if (m) pct = Math.max(pct, +m[1]); },
+          (line) => {
+            const m = line.match(/-->\s*(\d+):(\d+):(\d+(?:\.\d+)?)\]\s*(.*)$/); if (!m) return;
+            pct = Math.max(pct, Math.min(99, Math.floor(toSec(m[1], m[2], m[3]) / durS * 100)));
+            const w = m[4].trim(); if (w && !/^\[.*\]$/.test(w)) { live.push(w); if (live.length > 14) live.shift(); $('wLive').textContent = '… ' + live.join(' '); }
+          });
+      } finally { clearInterval(tick); }
+
+      const json = JSON.parse(fs.readFileSync(outBase + '.json', 'utf8'));
+      const words = [];
+      (json.transcription || []).forEach((seg) => {
+        const t = (seg.text || '').trim();
+        if (!t || /^\[.*\]$|^\(.*\)$/.test(t)) return;
+        const off = Math.round(inS * 1000); // tiempos absolutos en la secuencia
+        t.split(/\s+/).forEach((p) => words.push({ t: p, from: seg.offsets.from + off, to: seg.offsets.to + off }));
+      });
+      wClean();
+      $('startMode').value = 'zero'; // los tiempos ya son de la secuencia
+      if (!words.length) throw new Error('No se detectó voz en la secuencia.');
+      if (vocab) wFixVocab(words, vocab);
+
+      subs = wSegment(words, Math.max(8, +$('wMax').value || 26));
+      applyRuleAll(); render();
+      $('txtInfo').textContent = 'Transcripción · ' + subs.length + ' subtítulos · ' + words.length + ' palabras';
+      wSet('Listo: ' + subs.length + ' subtítulos. Revisa el bold abajo y pulsa "Insertar subtítulos". El karaoke queda sincronizado palabra por palabra.', 100);
+    } catch (e) {
+      wSet((e && e.message) || String(e), 0);
+    } finally {
+      wClean();
+      $('btnWhisper').disabled = false; $('btnWhisperStop').style.display = 'none';
+    }
+  };
+
+  STYLE_IDS.concat(UI_IDS).forEach((k) => { $(k).addEventListener('change', save); });
+  load();
+  setAlign(align);
+  setActive(activeColor);
+  try { const fl = JSON.parse(localStorage.getItem('sb_fonts') || '[]'); if (fl.length) fillFontList(fl); else if (nodeRequire) $('btnFonts').onclick(); } catch (e) {}
+  renderSwatches(); renderPresets(); syncRuleUI(); updateMogrtInfo();
+  readSeq();
+})();
+</script>
+<script src="i18n.js"></script>
+</body>
+</html>
