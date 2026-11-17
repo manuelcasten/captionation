@@ -83,7 +83,8 @@
     'Nombre (ej. MiMarca)': 'Name (e.g. MyBrand)', 'mimarca, producto, Ana': 'mybrand, product, Ana', 'agua, filtro, mimarca': 'water, filter, mybrand',
     'Selecciona una capa CAP y pulsa el botón de arriba': 'Select a CAP layer and press the button above',
     'Selecciona en la línea de tiempo la capa CAP del subtítulo': "Select the caption's CAP layer in the timeline",
-    'Borrar el preset elegido': 'Delete the selected preset', 'Guarda el color marcado como muestra': 'Save the selected color as a swatch',
+    'Borrar el preset elegido': 'Delete the selected preset',
+    'Pega un código: #0A5CFF, 0a5cff, #FFF o rgb(10, 92, 255)': 'Paste a code: #0A5CFF, 0a5cff, #FFF or rgb(10, 92, 255)', 'Guarda el color marcado como muestra': 'Save the selected color as a swatch',
     'Cambia el estilo de todos los subtítulos de la pista elegida, sin tocar el texto': 'Changes the style of every caption on the chosen track, without touching the text',
     'Cambia "Captionation Estilo": todos los subtítulos del proyecto se actualizan': 'Changes "Captionation Estilo": every caption in the project updates'
   };

@@ -94,6 +94,8 @@
   #credit b { color:var(--tx); }
   #updBar { display:none; background:var(--acc); color:#fff; padding:8px 10px; margin:0 0 10px; font-weight:600; align-items:center; gap:8px; }
   #updBar.on { display:flex; }
+  input.hex { width:84px; font-family:Consolas, monospace; font-size:11px; text-transform:uppercase; }
+  input.hex.bad { border-color:var(--err); outline:1px solid var(--err); }
   #updBar span { flex:1; }
   #updBar button { background:#fff; color:var(--acc); border-color:#fff; font-weight:800; }
 </style>
@@ -315,7 +317,7 @@
     catch (e) { return ''; }
   }
   // ---------- versión y aviso de actualizaciones (lee manuelcasten.github.io/version.json) ----------
-  const SB_VERSION = '4.2.1';
+  const SB_VERSION = '4.2.2';
   const SB_SITE = 'https://manuelcasten.github.io/';
   $('verTxt').textContent = SB_VERSION;
   $('siteLink').onclick = (e) => { e.preventDefault(); openUrl(SB_SITE); };
@@ -597,6 +599,49 @@
     x.addEventListener('click', () => setActive(x.id));
   });
   $('btnSwAdd').onclick = () => { const v = $(activeColor).value.toLowerCase(); if (!palette.includes(v)) palette.push(v); renderSwatches(); save(); };
+
+  // ---------- pegar códigos de color del manual de marca: #0A5CFF, 0a5cff, #FFF, rgb(10, 92, 255), "Azul: #0A5CFF" ----------
+  function parseColor(s) {
+    const raw = String(s || '').toLowerCase();
+    s = raw.trim().replace(/\s+/g, '');
+    let m = s.match(/^#?([0-9a-f]{6})[;,.]?$/); if (m) return '#' + m[1];
+    m = s.match(/^#?([0-9a-f])([0-9a-f])([0-9a-f])[;,.]?$/); if (m) return '#' + m[1] + m[1] + m[2] + m[2] + m[3] + m[3];
+    m = s.match(/^(?:rgba?\()?(\d{1,3}),(\d{1,3}),(\d{1,3})(?:,[\d.]+)?\)?;?$/);
+    if (m && [m[1], m[2], m[3]].every((n) => +n <= 255)) return '#' + [m[1], m[2], m[3]].map((n) => (+n).toString(16).padStart(2, '0')).join('');
+    // CMYK de manual de marca: "C100 M60 Y0 K0" o "100, 60, 0, 0" (aproximado a RGB)
+    m = s.match(/c:?(\d{1,3})%?,?m:?(\d{1,3})%?,?y:?(\d{1,3})%?,?k:?(\d{1,3})%?/) || s.match(/^(\d{1,3}),(\d{1,3}),(\d{1,3}),(\d{1,3})$/);
+    if (m && [m[1], m[2], m[3], m[4]].every((n) => +n <= 100)) {
+      const k = 1 - m[4] / 100;
+      return '#' + [m[1], m[2], m[3]].map((n) => Math.round(255 * (1 - n / 100) * k).toString(16).padStart(2, '0')).join('');
+    }
+    m = raw.match(/#([0-9a-f]{6})(?![0-9a-f])/) || raw.match(/(?:^|[^0-9a-z])([0-9a-f]{6})(?:$|[^0-9a-z])/); if (m) return '#' + m[1];
+    return null;
+  }
+  function syncHex() {
+    document.querySelectorAll('input.hex').forEach((h) => { if (document.activeElement !== h) { h.value = $(h.dataset.for).value.toUpperCase(); h.classList.remove('bad'); } });
+  }
+  document.querySelectorAll('input.col').forEach((x) => {
+    const h = document.createElement('input');
+    h.type = 'text'; h.className = 'hex'; h.dataset.for = x.id; h.maxLength = 40; h.spellcheck = false;
+    h.title = 'Pega un código: #0A5CFF, 0a5cff, #FFF o rgb(10, 92, 255)';
+    h.value = x.value.toUpperCase();
+    x.parentNode.insertBefore(h, x.nextSibling);
+    const apply = (final) => {
+      const p = parseColor(h.value);
+      h.classList.toggle('bad', !p && (final || h.value.length >= 6));
+      if (!p) return;
+      x.value = p;
+      x.dispatchEvent(new Event('input', { bubbles: true })); x.dispatchEvent(new Event('change', { bubbles: true }));
+      try { save(); } catch (e) {}
+      if (final) h.value = p.toUpperCase();
+    };
+    h.addEventListener('focus', () => { setActive(x.id); h.select(); });
+    h.addEventListener('input', () => apply(false));
+    h.addEventListener('change', () => apply(true));
+    h.addEventListener('blur', () => { apply(true); if (!parseColor(h.value)) { h.value = x.value.toUpperCase(); h.classList.remove('bad'); } });
+    h.addEventListener('keydown', (e) => { if (e.key === 'Enter') { apply(true); h.blur(); } });
+    x.addEventListener('input', () => { if (document.activeElement !== h) h.value = x.value.toUpperCase(); });
+  });
   [['fOpR', 'fOp'], ['glowIR', 'glowI']].forEach(([r, n]) => {
     $(r).oninput = () => { $(n).value = $(r).value; save(); };
     $(n).addEventListener('input', () => { $(r).value = $(n).value; });
@@ -902,6 +947,7 @@
     pvRaf = 0;
     pvFontFace();
     const V = pvFmt === 'v', W = V ? 1080 : 1920, H = V ? 1920 : 1080;
+    syncHex(); // los códigos de color siguen a presets, muestras y tarjetas
     const k = Math.min(Math.max(120, $('pvWrap').clientWidth) / W, (V ? 300 : 220) / H);
     $('pv').style.width = Math.round(W * k) + 'px'; $('pv').style.height = Math.round(H * k) + 'px';
     const stg = $('pvStage'); stg.style.width = W + 'px'; stg.style.height = H + 'px'; stg.style.transform = 'scale(' + k + ')';
