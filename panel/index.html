@@ -330,7 +330,7 @@
       if (nodeRequire) {
         nodeRequire('https').get(url, { headers: { 'Cache-Control': 'no-cache' } }, (r) => {
           let d = ''; r.setEncoding('utf8'); r.on('data', (c) => { d += c; });
-          r.on('end', () => { try { res(JSON.parse(d)); } catch (e) { rej(e); } });
+          r.on('end', () => { try { res(JSON.parse(d.replace(/^﻿/, ''))); } catch (e) { rej(e); } });
         }).on('error', rej);
       } else fetch(url, { cache: 'no-store' }).then((r) => r.json()).then(res, rej);
     });
