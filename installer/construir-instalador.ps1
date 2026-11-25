@@ -157,14 +157,18 @@ $zipPath = Join-Path $stage 'data.zip'
 
 $exe = Join-Path $stage 'setup.exe'
 $cs = Get-Content (Join-Path $root 'installer\Instalador.cs') -Raw -Encoding UTF8
-Add-Type -TypeDefinition $cs -OutputAssembly $exe -OutputType WindowsApplication `
-    -ReferencedAssemblies 'System.Windows.Forms', 'System.IO.Compression', 'System.IO.Compression.FileSystem'
-
-$zb = [IO.File]::ReadAllBytes($zipPath)
-$fs = [IO.File]::Open($exe, 'Append')
-$fs.Write($zb, 0, $zb.Length)
-$fs.Write([BitConverter]::GetBytes([long]$zb.Length), 0, 8)
-$fs.Close()
+# el zip va como RECURSO del .exe (no pegado al final: eso lo hacía parecer sospechoso a los antivirus),
+# con icono y datos de versión/autor
+$prov = New-Object Microsoft.CSharp.CSharpCodeProvider
+$cp = New-Object System.CodeDom.Compiler.CompilerParameters
+$cp.GenerateExecutable = $true
+$cp.OutputAssembly = $exe
+$cp.CompilerOptions = '/target:winexe /optimize+ /win32icon:"' + (Join-Path $root 'installer\icono.ico') + '"'
+'System.dll', 'System.Windows.Forms.dll', 'System.IO.Compression.dll', 'System.IO.Compression.FileSystem.dll' | ForEach-Object { [void]$cp.ReferencedAssemblies.Add($_) }
+$res = Join-Path $stage 'data.zip'
+[void]$cp.EmbeddedResources.Add($res)
+$r = $prov.CompileAssemblyFromSource($cp, $cs)
+if ($r.Errors.HasErrors) { $r.Errors | ForEach-Object { Write-Host $_ }; throw 'No compiló el instalador' }
 
 Copy-Item $exe $Out -Force
 Write-Host ""

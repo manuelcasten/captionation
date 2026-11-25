@@ -1,10 +1,21 @@
-// Instalador de Subtitulos Bold. El .zip con el panel y las fuentes va pegado al final del .exe.
+// Instalador de Captionation. El .zip con el panel y las fuentes va como recurso interno del .exe
+// (antes iba pegado al final del archivo, y eso hacia que algunos antivirus lo marcaran por error).
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Microsoft.Win32;
+
+[assembly: AssemblyTitle("Instalador de Captionation")]
+[assembly: AssemblyDescription("Instala el panel gratuito Captionation para Premiere Pro y After Effects")]
+[assembly: AssemblyCompany("Manuel Aldana")]
+[assembly: AssemblyProduct("Captionation")]
+[assembly: AssemblyCopyright("(c) 2026 Manuel Aldana - MIT - manuelcasten.github.io")]
+[assembly: AssemblyVersion("4.3.0.0")]
+[assembly: AssemblyFileVersion("4.3.0.0")]
+[assembly: AssemblyInformationalVersion("4.3.0")]
 
 static class Instalador
 {
@@ -17,22 +28,20 @@ static class Instalador
     static void Main()
     {
         if (MessageBox.Show(
-                "Se va a instalar el panel Captionation para Premiere Pro.\n\nCierra Premiere Pro antes de continuar.",
+                "Se va a instalar el panel Captionation para Premiere Pro y After Effects.\n\nCierra Premiere Pro y After Effects antes de continuar.",
                 Titulo, MessageBoxButtons.OKCancel, MessageBoxIcon.Information) != DialogResult.OK) return;
 
-        string tmp = Path.Combine(Path.GetTempPath(), "sb_install_" + Guid.NewGuid().ToString("N"));
+        string tmp = Path.Combine(Path.GetTempPath(), "captionation_" + Guid.NewGuid().ToString("N"));
         try
         {
-            // 1) sacar el zip pegado al final del exe
-            string self = Application.ExecutablePath;
-            byte[] all = File.ReadAllBytes(self);
-            long zipLen = BitConverter.ToInt64(all, all.Length - 8);
-            if (zipLen <= 0 || zipLen > all.Length - 8) throw new Exception("El instalador esta danado (no encuentro los archivos).");
-            Directory.CreateDirectory(tmp);
-            string zipPath = Path.Combine(tmp, "data.zip");
-            using (var fs = File.Create(zipPath)) fs.Write(all, (int)(all.Length - 8 - zipLen), (int)zipLen);
+            // 1) descomprimir los archivos que van dentro del instalador
             string data = Path.Combine(tmp, "data");
-            ZipFile.ExtractToDirectory(zipPath, data);
+            Directory.CreateDirectory(data);
+            using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("data.zip"))
+            {
+                if (s == null) throw new Exception("El instalador esta danado (no encuentro los archivos).");
+                using (var z = new ZipArchive(s, ZipArchiveMode.Read)) z.ExtractToDirectory(data);
+            }
 
             // 2) permitir paneles CEP propios (por usuario)
             for (int v = 9; v <= 14; v++)
@@ -67,7 +76,7 @@ static class Instalador
 
             MessageBox.Show(
                 "Listo, Captionation quedo instalado." + (nf > 0 ? "\n(Se instalaron " + nf + " fuentes Montserrat.)" : "") +
-                "\n\nAbre Premiere Pro y ve a:\nVentana > Extensiones > Captionation",
+                "\n\nAbre Premiere Pro o After Effects y ve a:\nVentana > Extensiones > Captionation",
                 Titulo, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
