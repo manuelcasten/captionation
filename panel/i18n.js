@@ -88,6 +88,13 @@
     'Cambia el estilo de todos los subtítulos de la pista elegida, sin tocar el texto': 'Changes the style of every caption on the chosen track, without touching the text',
     'Cambia "Captionation Estilo": todos los subtítulos del proyecto se actualizan': 'Changes "Captionation Estilo": every caption in the project updates'
   };
+  // ---- 4.3: fuentes fijadas, barra de marcas, selector de color, muestras automáticas ----
+  [['Marcas', 'Brands'], ['Fijar esta fuente arriba de la lista', 'Pin this font to the top of the list'], ['Quitar de las fuentes fijadas', 'Unpin this font'],
+   ['Guarda una marca abajo (o importa un .sbmarca) y aparece aquí.', 'Save a brand below (or import a .sbmarca) and it shows up here.'],
+   ['Los colores que usas se guardan solos como muestras (en la marca activa). Clic en un cuadro de color = selector con campo para pegar #HEX, RGB o CMYK. Clic derecho en una muestra = quitarla.',
+    'Colors you use are saved as swatches automatically (in the active brand). Click a color box = picker with a field to paste #HEX, RGB or CMYK. Right-click a swatch to remove it.'],
+   ['Pega #HEX, RGB o CMYK. Clic derecho en una muestra = quitarla.', 'Paste #HEX, RGB or CMYK. Right-click a swatch to remove it.']
+  ].forEach(function (p) { EX[p[0]] = p[1]; });
   // frases dentro de mensajes que cambian (números, nombres…)
   var RX = [
     [/^Vista previa · subtítulo (\d+) de (\d+) \(clic en la lista para cambiar\)$/, 'Preview · caption $1 of $2 (click the list to change)'],

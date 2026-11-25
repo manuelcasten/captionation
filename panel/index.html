@@ -97,6 +97,13 @@
   input.hex { width:84px; font-family:Consolas, monospace; font-size:11px; text-transform:uppercase; }
   input.hex.bad { border-color:var(--err); outline:1px solid var(--err); }
   #updBar span { flex:1; }
+  button.pin { padding:3px 7px; color:var(--dim); }
+  button.pin.on { color:var(--yel); }
+  .brandHead { color:var(--dim); margin:10px 0 4px; }
+  #brandBar { display:flex; flex-wrap:wrap; gap:5px; }
+  #brandBar button { padding:5px 10px; }
+  #brandBar button.on { background:var(--acc); border-color:var(--acc); color:#fff; }
+  #brandBar .none { color:var(--dim); font-size:11px; }
   #updBar button { background:#fff; color:var(--acc); border-color:#fff; font-weight:800; }
 </style>
 </head>
@@ -165,9 +172,11 @@
   <div class="row fontTxt" style="margin-top:8px;display:none"><label>Fuente regular</label><input class="font" id="fontReg" list="fontList" placeholder="SegoeUI"></div>
   <div class="row fontTxt" style="display:none"><label>Fuente bold</label><input class="font" id="fontBold" list="fontList" placeholder="SegoeUI-Bold"></div>
   <datalist id="fontList"></datalist>
-  <div class="row" style="margin-top:8px"><label>Fuente regular</label><select class="fontSel" data-for="fontReg" style="flex:1;min-width:0"><option value="">— elegir de la lista —</option></select></div>
-  <div class="row"><label>Fuente bold</label><select class="fontSel" data-for="fontBold" style="flex:1;min-width:0"><option value="">— elegir de la lista —</option></select></div>
+  <div class="row" style="margin-top:8px"><label>Fuente regular</label><select class="fontSel" data-for="fontReg" style="flex:1;min-width:0"><option value="">— elegir de la lista —</option></select><button class="pin" data-for="fontReg" title="Fijar esta fuente arriba de la lista">☆</button></div>
+  <div class="row"><label>Fuente bold</label><select class="fontSel" data-for="fontBold" style="flex:1;min-width:0"><option value="">— elegir de la lista —</option></select><button class="pin" data-for="fontBold" title="Fijar esta fuente arriba de la lista">☆</button></div>
   <div class="row"><button id="btnFonts">Actualizar lista de fuentes</button><span class="path" id="fontInfo"></span></div>
+  <div class="brandHead">Marcas</div>
+  <div id="brandBar"></div>
   <div class="row" style="margin-top:8px"><label>Preset de marca</label><select id="preset" style="flex:1"><option value="">— ninguno —</option></select></div>
   <div class="row">
     <input type="text" id="presetName" placeholder="Nombre (ej. MiMarca)" style="flex:1">
@@ -218,8 +227,8 @@
   <div class="row"><label>Regular</label><input type="color" class="col" id="colReg" value="#ffffff">
                    <label style="flex:0 0 auto">Bold</label><input type="color" class="col" id="colBold" value="#ffffff"></div>
   <div class="row"><label>Borde (grosor px)</label><input type="number" id="bordeW" min="0" step="1" value="0"><input type="color" class="col" id="colBorde" value="#000000"></div>
-  <div class="row" style="align-items:flex-start"><div id="swatches"></div><button id="btnSwAdd" title="Guarda el color marcado como muestra">+ Muestra</button></div>
-  <p class="hint">Elige un cuadro de color (queda marcado en azul) y haz clic en una muestra. Clic derecho en una muestra = borrarla.</p>
+  <div class="row" style="align-items:flex-start"><div id="swatches"></div></div>
+  <p class="hint">Los colores que usas se guardan solos como muestras (en la marca activa). Clic en un cuadro de color = selector con campo para pegar #HEX, RGB o CMYK. Clic derecho en una muestra = quitarla.</p>
 </details>
 
 <details>
@@ -250,6 +259,7 @@
 </details>
 <div id="credit"><span class="wide">Captionation</span> · by <b>Manuel Aldana</b> · <a href="#" id="siteLink" style="color:var(--acc)">manuelcasten.github.io</a></div>
 
+<script src="picker.js"></script>
 <script>
 (function () {
   'use strict';
@@ -317,7 +327,7 @@
     catch (e) { return ''; }
   }
   // ---------- versión y aviso de actualizaciones (lee manuelcasten.github.io/version.json) ----------
-  const SB_VERSION = '4.2.2';
+  const SB_VERSION = '4.3.0';
   const SB_SITE = 'https://manuelcasten.github.io/';
   $('verTxt').textContent = SB_VERSION;
   $('siteLink').onclick = (e) => { e.preventDefault(); openUrl(SB_SITE); };
@@ -485,11 +495,32 @@
     n.addEventListener('input', () => { r.value = n.value; });
     n.addEventListener('change', () => { r.value = n.value; });
   });
+  // fuentes fijadas (★): salen primero en las dos listas
+  const getPins = () => { try { return JSON.parse(localStorage.getItem('sb_fontPins') || '[]'); } catch (e) { return []; } };
+  document.querySelectorAll('button.pin').forEach((b) => {
+    b.onclick = () => {
+      const ps = $(b.dataset.for).value.trim(); if (!ps) return;
+      let p = getPins();
+      p = p.includes(ps) ? p.filter((x) => x !== ps) : [ps].concat(p);
+      try { localStorage.setItem('sb_fontPins', JSON.stringify(p)); } catch (e) {}
+      syncFontSel();
+    };
+  });
   function syncFontSel() {
     document.querySelectorAll('.sbRange').forEach((r) => { r.value = $(r.dataset.for).value; });
-    const list = window._sbFonts || [];
+    const list = window._sbFonts || [], pins = getPins();
+    document.querySelectorAll('button.pin').forEach((b) => {
+      const on = pins.includes($(b.dataset.for).value.trim());
+      b.classList.toggle('on', on); b.textContent = on ? '★' : '☆';
+      b.title = on ? 'Quitar de las fuentes fijadas' : 'Fijar esta fuente arriba de la lista';
+    });
     document.querySelectorAll('.fontSel').forEach((s) => {
       s.innerHTML = '<option value="">— elegir de la lista (' + list.length + ') —</option>';
+      if (pins.length) {
+        const g = document.createElement('optgroup'); g.label = '★ Fijadas';
+        pins.forEach((ps) => { const f = list.find((x) => x.ps === ps); const o = document.createElement('option'); o.value = ps; o.textContent = '★ ' + (f ? f.label : ps); g.appendChild(o); });
+        s.appendChild(g);
+      }
       let grp = null, fam = '';
       list.forEach((f) => {
         const fm = f.label.split(' ')[0];
@@ -497,7 +528,7 @@
         const o = document.createElement('option'); o.value = f.ps; o.textContent = f.label + '  (' + f.ps + ')'; grp.appendChild(o);
       });
       const cur = $(s.dataset.for).value || '';
-      if (cur && !list.some((f) => f.ps === cur)) { const o = document.createElement('option'); o.value = cur; o.textContent = cur + '  (no instalada en este PC)'; s.insertBefore(o, s.children[1] || null); }
+      if (cur && !list.some((f) => f.ps === cur) && !pins.includes(cur)) { const o = document.createElement('option'); o.value = cur; o.textContent = cur + '  (no instalada en este PC)'; s.insertBefore(o, s.children[1] || null); }
       s.value = cur;
     });
   }
@@ -507,6 +538,7 @@
       const inp = $(s.dataset.for); inp.value = s.value;
       inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
       try { save(); } catch (e) {}
+      syncFontSel();
     };
   });
   $('btnFonts').onclick = () => {
@@ -539,8 +571,23 @@
     s.innerHTML = '<option value="">— ninguno —</option>';
     Object.keys(p).sort().forEach((n) => { const o = document.createElement('option'); o.value = n; o.textContent = n; s.appendChild(o); });
     if (sel !== undefined) s.value = sel;
+    else if (!p[s.value]) s.value = '';
+    renderBrandBar();
+  }
+  // barra de marcas: un clic cambia de marca (estilo, fuentes, colores y muestras)
+  function renderBrandBar() {
+    const bar = $('brandBar'), p = getPresets(), names = Object.keys(p).sort(), act = $('preset').value;
+    bar.innerHTML = '';
+    if (!names.length) { const d = document.createElement('span'); d.className = 'none'; d.textContent = 'Guarda una marca abajo (o importa un .sbmarca) y aparece aquí.'; bar.appendChild(d); return; }
+    names.forEach((n) => {
+      const b = document.createElement('button'); b.textContent = n; b.classList.toggle('on', n === act);
+      b.onclick = () => { $('preset').value = n; $('preset').onchange(); };
+      bar.appendChild(b);
+    });
   }
   $('preset').onchange = () => {
+    renderBrandBar();
+    try { localStorage.setItem('sb_activeBrand', $('preset').value); } catch (e) {}
     const p = getPresets()[$('preset').value];
     if (!p) return;
     applyStyle(p.style); render(); syncFontSel();
@@ -553,7 +600,7 @@
     const n = $('presetName').value.trim() || $('preset').value;
     if (!n) { status('Escribe un nombre para el preset.', 'err'); return; }
     const p = getPresets(); p[n] = { style: collectStyle(), palette: palette.slice() }; setPresets(p);
-    renderPresets(n); status('Preset "' + n + '" guardado.', 'ok');
+    renderPresets(n); try { localStorage.setItem('sb_activeBrand', n); } catch (e) {} status('Preset "' + n + '" guardado.', 'ok');
   };
   $('btnPresetDel').onclick = () => {
     const n = $('preset').value; if (!n) return;
@@ -580,16 +627,30 @@
     } catch (e) { status('Ese archivo no es un archivo de marcas válido.', 'err'); }
   };
 
-  // ---------- muestras de color ----------
+  // ---------- muestras de color (se guardan solas al usar un color) ----------
   function renderSwatches() {
     const box = $('swatches'); box.innerHTML = '';
-    palette.forEach((hex, i) => {
-      const d = document.createElement('div'); d.className = 'sw'; d.style.background = hex; d.title = hex;
-      d.onclick = () => { $(activeColor).value = hex; save(); };
-      d.oncontextmenu = (e) => { e.preventDefault(); palette.splice(i, 1); renderSwatches(); save(); };
+    palette.forEach((hex) => {
+      const d = document.createElement('div'); d.className = 'sw'; d.style.background = hex; d.title = hex.toUpperCase();
+      d.onclick = () => { $(activeColor).value = hex; $(activeColor).dispatchEvent(new Event('input', { bubbles: true })); $(activeColor).dispatchEvent(new Event('change', { bubbles: true })); save(); };
+      d.oncontextmenu = (e) => { e.preventDefault(); removeColor(hex); };
       box.appendChild(d);
     });
   }
+  // la paleta también se guarda en la marca activa
+  function storePalette() {
+    renderSwatches(); save();
+    const n = $('preset').value, p = getPresets();
+    if (n && p[n]) { p[n].palette = palette.slice(); setPresets(p); }
+  }
+  function addColor(hex) {
+    hex = String(hex).toLowerCase();
+    if (!/^#[0-9a-f]{6}$/.test(hex) || palette.includes(hex)) return;
+    palette.push(hex);
+    if (palette.length > 30) palette.shift();
+    storePalette();
+  }
+  function removeColor(hex) { palette = palette.filter((c) => c !== hex); storePalette(); }
   function setActive(id) {
     activeColor = id;
     document.querySelectorAll('input.col').forEach((x) => x.classList.toggle('active', x.id === id));
@@ -598,7 +659,6 @@
     x.addEventListener('focus', () => setActive(x.id));
     x.addEventListener('click', () => setActive(x.id));
   });
-  $('btnSwAdd').onclick = () => { const v = $(activeColor).value.toLowerCase(); if (!palette.includes(v)) palette.push(v); renderSwatches(); save(); };
 
   // ---------- pegar códigos de color del manual de marca: #0A5CFF, 0a5cff, #FFF, rgb(10, 92, 255), "Azul: #0A5CFF" ----------
   function parseColor(s) {
@@ -633,8 +693,10 @@
       x.value = p;
       x.dispatchEvent(new Event('input', { bubbles: true })); x.dispatchEvent(new Event('change', { bubbles: true }));
       try { save(); } catch (e) {}
-      if (final) h.value = p.toUpperCase();
+      if (final) { h.value = p.toUpperCase(); addColor(p); }
     };
+    // selector propio (en vez del de Windows): cuadro de color + campo para pegar + muestras
+    if (window.CapPicker) window.CapPicker.attach(x, { parse: parseColor, palette: () => palette, onCommit: addColor, onRemove: removeColor });
     h.addEventListener('focus', () => { setActive(x.id); h.select(); });
     h.addEventListener('input', () => apply(false));
     h.addEventListener('change', () => apply(true));
@@ -1262,7 +1324,8 @@
   setAlign(align);
   setActive(activeColor);
   try { const fl = JSON.parse(localStorage.getItem('sb_fonts') || '[]'); if (fl.length) fillFontList(fl); else if (nodeRequire) $('btnFonts').onclick(); } catch (e) {}
-  renderSwatches(); renderPresets(); syncRuleUI(); updateMogrtInfo();
+  renderSwatches(); syncRuleUI(); updateMogrtInfo();
+  try { const ab = localStorage.getItem('sb_activeBrand') || ''; renderPresets(getPresets()[ab] ? ab : ''); } catch (e) { renderPresets(); }
   readSeq();
 })();
 </script>
